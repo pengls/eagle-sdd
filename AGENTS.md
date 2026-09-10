@@ -5,7 +5,7 @@ it installs, and `docs/WORKFLOW.md` for the flow written for a human reader.
 
 ## Layout
 
-- `skills/eagle-sdd/` — the skill. `SKILL.md` is the seven-step spine; everything else is
+- `skills/eagle-sdd/` — the skill. `SKILL.md` is the eight-step spine; everything else is
   reference loaded on demand.
 - `install.sh` / `install.ps1` — the installer. Downloads the skill and links it into each
   harness's skill root. Also runs in local mode, linking this checkout instead.

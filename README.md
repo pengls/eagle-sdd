@@ -22,7 +22,7 @@ docs/eagle-sdd/
 - [Install](#install)
 - [Use](#use)
 - [What it produces](#what-it-produces)
-- [The seven steps](#the-seven-steps)
+- [The eight steps](#the-eight-steps)
 - [The validator](#the-validator)
 - [Harness support](#harness-support)
 - [Repository layout](#repository-layout)
@@ -130,7 +130,8 @@ Invoke it by name. It will not trigger on its own.
 "spec this before coding"     any harness, said explicitly
 ```
 
-Then follow the gates. The full walkthrough is in [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+Then follow the gates. There are three, and the first is a conversation rather than a document —
+the full walkthrough is in [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 
 ## What it produces
 
@@ -178,17 +179,32 @@ git commit -m "style: store search bar layout"
 
 A task whose completion nobody can observe is a heading, not a task.
 
-## The seven steps
+## The eight steps
 
 | Step | Produces | Done when |
 |---|---|---|
 | 1. Orient | the change's identity | You know what existing documents cover, and the change is named `<date>-<slug>` |
 | 2. Grill | rulings | Every decision is answered or recorded with its cost if wrong |
-| 3. Design document | `designs/<date>-<slug>-design.md` | **User approves the decisions** |
-| 4. Plan document | `plans/<date>-<slug>.md` | **User sees the task list**; validator clean |
-| 5. Implement | code | Every box ticked after reading its verification output |
-| 6. Verify | report | Every part of the design maps to evidence run and read this session |
-| 7. Close | — | Validator clean, pair complete, result reported |
+| 3. Summarize | a message, nothing on disk | **User confirms the problem and the approach** |
+| 4. Design document | `designs/<date>-<slug>-design.md` | **User approves the decisions** |
+| 5. Plan document | `plans/<date>-<slug>.md` | **User sees the task list**; validator clean |
+| 6. Implement | code | Every box ticked after reading its verification output |
+| 7. Verify | report | Every part of the design maps to evidence run and read this session |
+| 8. Close | — | Validator clean, pair complete, result reported |
+
+Three gates, and they are not redundant — each catches a different mistake, and each is cheaper
+than the one after it:
+
+| Gate | You approve | The mistake it catches |
+|---|---|---|
+| After step 3 | The problem and the approach | **You are solving the wrong problem** |
+| After step 4 | The decisions and what is out of scope | The right problem, solved the wrong way |
+| After step 5 | The task breakdown, before any code | The right solution, decomposed badly |
+
+Step 3 is the one that pays for itself most often. It writes nothing: it states back, in plain
+language, what the agent understood and how it intends to solve it, and then it answers your
+questions until you agree. Catching a misread requirement there costs one message. Catching it
+after the design is frozen costs a rewrite; after the code is written, the code.
 
 Before starting, the workflow routes itself. A rename, a typo, a dependency bump, or a bug with
 one obvious cause is **declined** — it says so and stops, rather than spending an hour producing
@@ -260,7 +276,7 @@ Manual invocation is enforced three ways, because harnesses read different place
 
 ```
 skills/eagle-sdd/
-├── SKILL.md                    the seven steps, the gates, the failure modes
+├── SKILL.md                    the eight steps, the gates, the failure modes
 ├── references/
 │   ├── plan-format.md          the document grammar and all 12 checks
 │   ├── verification.md         the evidence gate and the review protocol

@@ -1,6 +1,6 @@
 # Verification
 
-Step 8 of the workflow. Load this file any time you are about to claim that something works.
+Step 7 of the workflow. Load this file any time you are about to claim that something works.
 
 Verification asks a question that tests cannot answer: **does the code do what the spec says it does?** A green suite means the tests you have agree with the code you wrote. It says nothing about whether either one matches what was agreed.
 
@@ -57,7 +57,7 @@ Two habits make this table honest:
 
 If a part of the design has no possible check, that is a defect in the design document. Say so —
 something that cannot be observed was never testable, and it should not have passed the gate at
-step 3.
+step 4.
 
 ## When work was delegated
 

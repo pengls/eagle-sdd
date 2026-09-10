@@ -20,12 +20,13 @@ Neither is ever rewritten. That is the whole design.
 - [Before anything: the scope check](#before-anything-the-scope-check)
 - [Step 1 — Orient](#step-1--orient)
 - [Step 2 — Grill](#step-2--grill)
-- [Step 3 — Design document](#step-3--design-document-gate-1)
-- [Step 4 — Plan document](#step-4--plan-document-gate-2)
-- [Step 5 — Implement](#step-5--implement)
-- [Step 6 — Verify](#step-6--verify)
-- [Step 7 — Close](#step-7--close)
-- [The two gates](#the-two-gates)
+- [Step 3 — Summarize](#step-3--summarize)
+- [Step 4 — Design document](#step-4--design-document)
+- [Step 5 — Plan document](#step-5--plan-document)
+- [Step 6 — Implement](#step-6--implement)
+- [Step 7 — Verify](#step-7--verify)
+- [Step 8 — Close](#step-8--close)
+- [The three gates](#the-three-gates)
 - [What the workflow refuses to do](#what-the-workflow-refuses-to-do)
 - [When something goes wrong mid-run](#when-something-goes-wrong-mid-run)
 - [Worked example](#worked-example)
@@ -122,7 +123,56 @@ built.
 
 ---
 
-## Step 3 — Design document <span id="gate-1"></span>
+## Step 3 — Summarize
+
+**What it produces:** nothing on disk. A message, and a conversation.
+
+This step exists because the design document is expensive to change once it is written and
+approved, and a paragraph of prose in a chat message costs nothing. It is the cheapest place in
+the whole workflow to discover that the agent has understood the wrong problem — or the right
+problem in the wrong way.
+
+**The summary covers six things, in this order:**
+
+1. **The problem, as understood** — one or two sentences, in your terms. If it cannot be stated
+   without hedging, the grill at step 2 is not finished.
+2. **The approach** — how it intends to solve it, in plain language. "The store page gets a
+   collapsible filter row", not "add `.search-actions` with `margin-left: auto`".
+3. **The decisions** — each one with the option it beat. You are checking the reasoning here, not
+   just the conclusion.
+4. **Out of scope** — what it is deliberately not doing, and what must not break.
+5. **Assumptions and open risks** — what it is unsure about, and what it is taking for granted.
+   An unstated assumption is the single most likely reason a design turns out wrong.
+6. **The question** — it closes by asking directly whether anything is wrong, missing, or needs
+   clarifying.
+
+**What it must not become:**
+
+- **Not a design document.** No code, no file paths, no class names. If it needs code to be
+  understood, that belongs in step 4 — and a summary that carries the detailed design turns step 4
+  into a rubber stamp, which costs the workflow the gate that step exists for.
+- **Not long.** If the summary is longer than your original request, it is not a summary.
+- **Not an announcement.** It expects replies, and it answers them. If your reply changes a
+  decision, it revises the summary and shows you the revised version — it does not patch the
+  answer into the design document later and hope you notice.
+
+**This step is multi-turn by design.** Ask anything: why this approach and not the other one, what
+happens in the edge case you are worried about, whether the constraint you care about is actually
+respected. Keep going until you are satisfied. It does not move on because you went quiet — it
+ends its turn on the question and waits.
+
+If you say "just go ahead", that is a ruling: it gets recorded and carried into the design
+document like any other.
+
+> ### 🚦 Gate 1 — you confirm the summary
+>
+> Nothing is written to disk until you agree with what is about to be written.
+>
+> This gate catches **the wrong problem**. The next one catches the wrong solution.
+
+---
+
+## Step 4 — Design document
 
 **Produces:** `docs/eagle-sdd/designs/<date>-<slug>-design.md`, from the `design-doc.md` template.
 
@@ -144,7 +194,7 @@ reader" is usually you, three months later.
 **Section 6 is the half no task can cover.** Per-task checks prove each step landed; section 6 is
 about whether the *feature* is right.
 
-> ### 🚦 Gate 1 — you approve the design
+> ### 🚦 Gate 2 — you approve the design
 >
 > It presents the decisions and the out-of-scope list, then **stops**.
 >
@@ -153,7 +203,7 @@ about whether the *feature* is right.
 
 ---
 
-## Step 4 — Plan document <span id="gate-2"></span>
+## Step 5 — Plan document
 
 **Produces:** `docs/eagle-sdd/plans/<date>-<slug>.md`, from the `implementation-plan.md` template.
 Same date, same slug as the design it implements.
@@ -218,7 +268,7 @@ the normal case, and usually a fresh agent with no memory of it:
 - **A separate verification task only for integration behavior** that genuinely spans several
   tasks — an end-to-end checklist, for instance.
 
-> ### 🚦 Gate 2 — you see the task list
+> ### 🚦 Gate 3 — you see the task list
 >
 > It presents the task titles and the file-structure table, then **stops**.
 >
@@ -227,7 +277,7 @@ the normal case, and usually a fresh agent with no memory of it:
 
 ---
 
-## Step 5 — Implement
+## Step 6 — Implement
 
 Tasks are worked **in order, one at a time**. For each:
 
@@ -258,9 +308,9 @@ and it does not tick a box it could not check.
 
 ---
 
-## Step 6 — Verify
+## Step 7 — Verify
 
-Step 5's `Run:`/`Expected:` pairs cover the mechanical half: each task did what its steps said.
+Step 6's `Run:`/`Expected:` pairs cover the mechanical half: each task did what its steps said.
 This step is the half they cannot cover — **is this the thing we agreed to build?**
 
 The gate is five steps, in order:
@@ -308,14 +358,14 @@ is reported as a gap rather than smoothed over.
 
 ---
 
-## Step 7 — Close
+## Step 8 — Close
 
 There is no merge and no archive. The pair was frozen at its date when it was written.
 
 1. Re-read the plan. Confirm every box is ticked and every task committed.
 2. Confirm the plan's `**Spec:**` line still resolves to its design document.
 3. Run the validator and confirm it is clean.
-4. Report back: the change's identity, the two file paths, and **anything from step 6 that stayed
+4. Report back: the change's identity, the two file paths, and **anything from step 7 that stayed
    unverified**.
 
 That last point is the one people skip. A change with a known, stated gap is useful. A change
@@ -323,15 +373,22 @@ with the gap quietly omitted is a trap for whoever reads it next.
 
 ---
 
-## The two gates
+## The three gates
 
-Both are blocking, and both exist for the same reason: everything downstream is derived from what
-comes before, so an unapproved upstream document is a guess that gets built at full price.
+All three are blocking, and all three exist for the same reason: everything downstream is derived
+from what comes before, so an unapproved upstream step is a guess that gets built at full price.
+They are not redundant — each catches a different class of mistake, and each is cheaper than the
+one after it.
 
-| After | You approve |
-|---|---|
-| Step 3, the design document | The decisions, and what is out of scope |
-| Step 4, the plan document | The task breakdown, before any code is written |
+| After | You approve | The mistake it catches |
+|---|---|---|
+| Step 3, the summary | The problem and the approach | **You are solving the wrong problem** |
+| Step 4, the design document | The decisions, and what is out of scope | The right problem, solved the wrong way |
+| Step 5, the plan document | The task breakdown, before any code is written | The right solution, decomposed badly |
+
+The first gate is the one that pays for itself most often. Catching a misread requirement in a
+paragraph of prose costs one message; catching it after the design is approved costs a rewrite of
+a frozen document; catching it after the code is written costs the code.
 
 **A gate is passed by you, not by the agent deciding it is fine** — and not by you having said
 something encouraging twenty minutes earlier. If it is unsure whether a gate passed, it did not.
@@ -395,37 +452,68 @@ agent (step 2)  ?  Layout direction
                   → No. Ruling: YAGNI — the page reloads often and persisting it
                     costs a preferences round trip. Cost if wrong: one extra click.
 
-agent (step 3)  Wrote docs/eagle-sdd/designs/2026-08-04-store-search-layout-design.md
+agent (step 3)  Here is what I am going to do — tell me if it is wrong.
+                Problem: 11 filters and 4 buttons share one row on /biz/store, so the
+                dropdowns are cramped and the action buttons wrap to the far left.
+                Approach: split into a common-filters row (keyword, branch, manager,
+                review status, created-at) plus a collapsed "more filters" area; move
+                Add / Export up to the card header; restore the full dropdown labels.
+                Decisions: layout B (beat a grid and grouped panels); buttons to the
+                card header; collapse default-closed; no state persistence.
+                Out of scope: the order page, the backend, the result table.
+                Assumptions: AdminLTE's Bootstrap 4 collapse is available — it is on
+                every other list page, so I have not asked.
+                Anything wrong, missing, or that needs clarifying?
+                🚦 Gate 1 — confirm before I write the design?
+
+you   is the "more filters" area going to push the table down when it opens?
+
+agent (step 3)  Yes — it expands in place and pushes the table down rather than
+                overlaying it. If you would rather it not reflow, an absolutely
+                positioned panel is the alternative; that costs you the click-outside
+                behaviour. Which do you want?
+
+you   pushing the table down is fine. go ahead.
+
+agent (step 4)  Wrote docs/eagle-sdd/designs/2026-08-04-store-search-layout-design.md
                 Decisions: 5. Out of scope: order page, backend, table.
-                🚦 Gate 1 — approve the design?
+                🚦 Gate 2 — approve the design?
 
 you   (reads it)  the collapse should be default-closed, otherwise fine
 
-agent (step 3)  Noted. Updating the design before it is approved.
+agent (step 4)  It is default-closed in the design — confirmed in §4.2. Anything else?
 
-agent (step 4)  Wrote docs/eagle-sdd/plans/2026-08-04-store-search-layout.md
+you   no, go
+
+agent (step 5)  Wrote docs/eagle-sdd/plans/2026-08-04-store-search-layout.md
                 8 tasks, 2 files, one end-to-end checklist task.
                 validate.mjs → OK (0 errors, 0 warnings)
-                🚦 Gate 2 — approve the task list?
+                🚦 Gate 3 — approve the task list?
 
 you   go
 
-agent (step 5)  Task 1 → rg -n "search-actions" ... → 4 matches → boxes ticked → committed
-                Task 2 → ... 
+agent (step 6)  Task 1 → rg -n "search-actions" ... → 4 matches → boxes ticked → committed
+                Task 2 → ...
                 Task 5 → no Run: applicable; manual check per design §6 → recorded
                 ... all 8 tasks, each verified then ticked then committed
 
-agent (step 6)  Walked design §1 and §4 section by section against fresh evidence.
+agent (step 7)  Walked design §1 and §4 section by section against fresh evidence.
                 §5 held: git diff shows only the two planned files.
                 §6 checklist run in the browser.
                 Delegated nothing, so no reviewer needed.
                 Unverified: none.
 
-agent (step 7)  validate.mjs → OK
+agent (step 8)  validate.mjs → OK
                 docs/eagle-sdd/designs/2026-08-04-store-search-layout-design.md
                 docs/eagle-sdd/plans/2026-08-04-store-search-layout.md
                 8/8 tasks, 8 commits, 0 gaps.
 ```
+
+Two things to notice in that transcript. The **summary caught a real question** — whether the
+expanding panel reflows the table — that the design document would have buried in §4.2 and the
+user would have read *after* the decisions were frozen. And the design gate still earned its place:
+the user misread a decision that was already correct, which cost one clarifying reply instead of a
+rewrite.
 
 ---
 
@@ -439,6 +527,6 @@ Zero dependencies, Node 18+. It checks whichever of the two documents exist and 
 error; warnings never change the exit code. The full code list is in
 [`references/plan-format.md`](../skills/eagle-sdd/references/plan-format.md#checks).
 
-Run it after step 4 and again in step 7. It is a structural check, not a substitute for step 6 —
+Run it after step 5 and again in step 8. It is a structural check, not a substitute for step 6 —
 it can tell you a task has no verification step, and it cannot tell you whether the feature is
 right.

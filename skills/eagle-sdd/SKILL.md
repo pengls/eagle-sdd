@@ -47,7 +47,7 @@ run it.
 
 ## The loop
 
-Seven steps. Each names what it produces and the condition that ends it. Do not leave a step
+Eight steps. Each names what it produces and the condition that ends it. Do not leave a step
 until its condition holds, and do not begin a step before the one it depends on is finished.
 
 ### 1. Orient
@@ -86,7 +86,7 @@ Resolve ambiguity before you write anything. Ask about one decision at a time, a
 
 A prose question ends your turn and leaves the decision dangling. A structured question carries
 the options, forces the decision, and lets you continue in the same breath. This is the single
-highest-leverage mechanic in this workflow, and step 3 depends on it: every decision you do not
+highest-leverage mechanic in this workflow, and steps 3 and 4 depend on it: every decision you do not
 settle here becomes a paragraph the user has to read and argue with later.
 
 Rules of the grill:
@@ -111,7 +111,53 @@ a ruling rather than asking again — and it goes into the design document, not 
 **Done when** every open decision is either answered by the user or recorded as a ruling, and
 none of them can still change what you are about to build.
 
-### 3. Design document
+### 3. Summarize
+
+Before you commit any detail to a document that freezes, state back what you understood and how
+you intend to solve it — in plain language — and get agreement. This is the cheapest place in the
+whole workflow to discover you have solved the wrong problem: cheaper than the design document,
+and far cheaper than the code. The design document is expensive to change once approved; a
+paragraph of prose in a chat message costs nothing.
+
+**This step writes no file.** It is a message and a conversation. Nothing goes on disk until the
+user agrees with what you are about to put there.
+
+The summary covers six things, in this order:
+
+1. **The problem, as you understood it** — one or two sentences, in the user's terms. If you
+   cannot state it without hedging, the grill is not finished; go back to step 2.
+2. **The approach** — how you intend to solve it, in plain language. What changes, at the level
+   of "the store page gets a collapsible filter row", not "add `.search-actions` with
+   `margin-left: auto`".
+3. **The decisions** — each one with the option it beat. The user is checking your reasoning here,
+   not just your conclusion.
+4. **Out of scope** — what you are deliberately not doing, and what must not break.
+5. **Assumptions and open risks** — what you are unsure about, and what you are taking for granted.
+   An unstated assumption is the single most likely reason the design turns out wrong.
+6. **The question** — close by asking directly whether anything is wrong, missing, or needs
+   clarifying.
+
+Rules that make this step worth its turn:
+
+- **No code, no file paths, no class names.** If it needs code to be understood, that belongs in
+  the design document. A summary that carries the detailed design turns step 4 into a rubber
+  stamp, which costs the workflow the gate that step exists for.
+- **Short.** If it is longer than the original request, it is not a summary.
+- **It is a conversation, not an announcement.** Expect replies. Answer them. If a reply changes a
+  decision, revise the summary and present it again — do not patch the answer into the design
+  document later and hope the user notices.
+- **Keep going until the user confirms.** Agreement to one part is not agreement to the whole. And
+  do not proceed because the user went quiet: end your turn on the question and wait.
+- **A "just go ahead" is a ruling.** Record it, and carry it into the design document like any
+  other.
+
+> **GATE — the user confirms the summary before the design document is written.** Present it and
+> stop.
+
+**Done when** the user has confirmed the summary, or told you to proceed — and if anything changed
+during the exchange, the revised summary has been shown.
+
+### 4. Design document
 
 Write `docs/eagle-sdd/designs/<date>-<slug>-design.md` from `assets/templates/design-doc.md`.
 Read `references/plan-format.md` for the grammar and the checks.
@@ -138,7 +184,7 @@ Write the document in the language the user is working in.
 
 **Done when** the design document exists and the user has approved it.
 
-### 4. Plan document
+### 5. Plan document
 
 Write `docs/eagle-sdd/plans/<date>-<slug>.md` from `assets/templates/implementation-plan.md`.
 Same date, same slug as the design it implements.
@@ -184,7 +230,7 @@ normal case, and often a fresh agent with no memory of it:
 **Done when** every task has its steps, its verification, and its commit; the plan names its
 design document; and `node <skill-dir>/scripts/validate.mjs` reports no errors.
 
-### 5. Implement
+### 6. Implement
 
 Work the tasks in order, one at a time.
 
@@ -213,7 +259,7 @@ the verification, and do not tick a box you could not check.
 **Done when** every box is ticked, every verification step has been run and read in this session,
 and every task is committed.
 
-### 6. Verify
+### 7. Verify
 
 Read `references/verification.md` and run its gate. Verification asks a different question from
 "do the tests pass": it asks **is this the thing we agreed to build**, section by section against
@@ -238,27 +284,30 @@ fail the other. A worker reporting success is not evidence; it is a claim to be 
 **Done when** every part of the design maps to evidence you ran and read, and any gap is
 reported to the user as a gap rather than smoothed over.
 
-### 7. Close
+### 8. Close
 
 There is no merge and no archive step. The pair was frozen at its date when it was written.
 
 1. Re-read the plan document. Confirm every box is ticked and every task is committed.
 2. Confirm the plan's `**Spec:**` line still resolves to its design document.
 3. Run `node <skill-dir>/scripts/validate.mjs` and confirm it is clean.
-4. Report to the user: the change's identity, the two file paths, and anything in step 6 that
+4. Report to the user: the change's identity, the two file paths, and anything in step 7 that
    stayed unverified.
 
 **Done when** the validator is clean, the pair is complete, and the user has the result.
 
 ## Gates
 
-Two, both blocking. Both exist for the same reason: everything downstream is derived from what
-comes before, so an unapproved upstream document is a guess that gets built at full price.
+Three, all blocking. They exist for the same reason: everything downstream is derived from what
+comes before, so an unapproved upstream step is a guess that gets built at full price. They are
+not redundant — each catches a different class of mistake, and each is cheaper than the one after
+it.
 
-| After | The user approves |
-|---|---|
-| Step 3, the design document | The decisions, and what is out of scope |
-| Step 4, the plan document | The task breakdown, before any code is written |
+| After | The user approves | The mistake it catches |
+|---|---|---|
+| Step 3, the summary | The problem and the approach | You are solving the wrong problem |
+| Step 4, the design document | The decisions, and what is out of scope | The right problem, solved the wrong way |
+| Step 5, the plan document | The task breakdown, before any code is written | The right solution, decomposed badly |
 
 A gate is passed by the user, not by you deciding it is fine, and not by the user having said
 something encouraging earlier. If you are unsure whether a gate passed, it did not.
@@ -295,10 +344,10 @@ These are the thoughts that precede a broken change. Each one is a signal, not a
 | File | Load it when |
 |---|---|
 | `references/plan-format.md` | Writing or validating a document — the grammar and every check |
-| `references/verification.md` | Step 6, or any time you are about to claim something works |
+| `references/verification.md` | Step 7, or any time you are about to claim something works |
 | `references/harnesses.md` | You need to translate an action here into the tool your environment actually provides |
 | `assets/templates/` | Starting either document — copy the template rather than inventing a shape |
-| `scripts/validate.mjs` | After step 4 and in step 7 — `node scripts/validate.mjs` |
+| `scripts/validate.mjs` | After step 5 and in step 8 — `node scripts/validate.mjs` |
 
 Layout this workflow owns, and nothing else:
 

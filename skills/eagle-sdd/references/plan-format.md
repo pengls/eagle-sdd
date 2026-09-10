@@ -5,6 +5,11 @@ implementation plan**, one pair per change. Nothing accumulates and nothing is m
 design document is the record of what was decided; the plan document is the record of what was
 done.
 
+The alignment summary presented in step 3 is *not* one of these documents. It is a message and a
+conversation, it is never written to disk, and once the design document exists it is redundant by
+definition — which is exactly why it is not a file. Nothing under `docs/eagle-sdd/` other than the
+pair below should ever exist.
+
 ## Contents
 
 - [Layout](#layout)
