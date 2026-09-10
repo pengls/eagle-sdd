@@ -590,3 +590,253 @@ The system SHALL hash passwords.
   expectCode(result, 'T008');
   expectClean(result);
 });
+
+// ------------------------------------------------------------- plan format
+
+const DESIGN_DOC = `# Store search layout Design
+
+Date: 2026-08-04
+Module: Store management page (\`/biz/store\`)
+Project: hl-assistant-admin
+
+## 1. Requirement summary
+
+Replace the cramped single-row filter bar with a common-filters row plus a collapsible
+more-filters area, so the page stays readable at any width.
+
+## 2. Confirmed decisions
+
+| Question | Decision |
+|---|---|
+| Layout direction | Option B, beating a multi-row grid and a grouped panel |
+
+## 3. Current state and problem
+
+Eleven filters and four buttons share one row.
+
+## 4. Detailed design
+
+### 4.1 Card header
+
+## 5. Out of scope
+
+## 6. How to verify
+`;
+
+const PLAN_DOC = `# Store search layout Implementation Plan
+
+> **For agentic workers:** implement this plan task by task.
+
+**Goal:** the filter bar is readable at any width.
+**Architecture:** front-end only, two files.
+**Tech Stack:** FreeMarker / jQuery.
+**Spec:** \`docs/eagle-sdd/designs/2026-08-04-store-search-layout-design.md\`
+
+## File structure
+
+| File | Change | Responsibility |
+|---|---|---|
+| \`store.ftl\` | Modify | Search bar layout |
+
+### Task 1: Add the search bar CSS
+
+**Files:**
+- Modify: \`store.ftl\`
+
+- [ ] **Step 1: Append the CSS**
+
+- [ ] **Step 2: Verify**
+
+Run: \`rg -n "search-actions" store.ftl\`
+Expected: at least four matching lines
+`;
+
+const PLAN_BASE = {
+  'designs/2026-08-04-store-search-layout-design.md': DESIGN_DOC,
+  'plans/2026-08-04-store-search-layout.md': PLAN_DOC,
+};
+
+/**
+ * The plan-format fixture lives at <tmp>/docs/eagle-sdd so that the documents'
+ * repository-relative `**Spec:**` paths resolve the way they do in a real repo.
+ */
+function runPlan(mutate = (files) => files) {
+  const base = mkdtempSync(join(tmpdir(), 'sdd-plan-'));
+  const root = join(base, 'docs', 'eagle-sdd');
+  try {
+    const files = mutate(structuredClone(PLAN_BASE));
+    mkdirSync(root, { recursive: true });
+    for (const [relPath, content] of Object.entries(files)) {
+      if (content === null || content === undefined) continue;
+      const full = join(root, relPath);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, content);
+    }
+    return validate(root);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+}
+
+test('a well-formed plan-format pair validates clean', () => {
+  expectClean(runPlan());
+});
+
+test('a plan document is free not to carry a Spec link', () => {
+  // The pair is joined on the shared <date>-<slug>, so an omitted **Spec:**
+  // is not an error — plenty of hand-written plans leave it out.
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace(/^\*\*Spec:\*\*.*$\n/m, '');
+    return f;
+  });
+  expectClean(result);
+});
+
+test('F101 — design filename is not <date>-<slug>-design.md', () => {
+  const result = runPlan((f) => {
+    f['designs/store-search-layout-design.md'] = f['designs/2026-08-04-store-search-layout-design.md'];
+    delete f['designs/2026-08-04-store-search-layout-design.md'];
+    return f;
+  });
+  expectCode(result, 'F101');
+});
+
+test('F101 — plan filename is not <date>-<slug>.md', () => {
+  const result = runPlan((f) => {
+    f['plans/store-search-layout.md'] = f['plans/2026-08-04-store-search-layout.md'];
+    delete f['plans/2026-08-04-store-search-layout.md'];
+    return f;
+  });
+  expectCode(result, 'F101');
+});
+
+test('F105 — plan document has no H1 title', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace(/^# .*$\n/m, '');
+    return f;
+  });
+  expectCode(result, 'F105');
+});
+
+test('F106 — plan document is missing **Goal:**', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace(/^\*\*Goal:\*\*.*$\n/m, '');
+    return f;
+  });
+  expectCode(result, 'F106');
+});
+
+test('F108 — **Spec:** points at a design document that is not there', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace(
+      'docs/eagle-sdd/designs/2026-08-04-store-search-layout-design.md',
+      'docs/eagle-sdd/designs/2026-01-01-does-not-exist-design.md',
+    );
+    return f;
+  });
+  expectCode(result, 'F108');
+});
+
+test('F109 — plan document has no task heading', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace('### Task 1: Add the search bar CSS', '### Some other section');
+    return f;
+  });
+  expectCode(result, 'F109');
+});
+
+test('F110 — a task has no checkbox step', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace(/- \[ \] \*\*Step 1[\s\S]*?- \[ \] \*\*Step 2/, '- **Step 1: Append the CSS**\n\n- **Step 2');
+    return f;
+  });
+  expectCode(result, 'F110');
+});
+
+test('F111 — warns when a task states no Expected: or Verify:', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace('Expected: at least four matching lines', 'Looks right.');
+    return f;
+  });
+  expectCode(result, 'F111');
+  expectClean(result); // a warning, not an error
+});
+
+test('F112 — warns when **Architecture:** is absent', () => {
+  const result = runPlan((f) => {
+    const key = 'plans/2026-08-04-store-search-layout.md';
+    f[key] = f[key].replace(/^\*\*Architecture:\*\*.*$\n/m, '');
+    return f;
+  });
+  expectCode(result, 'F112');
+});
+
+test('F121 — design document has no H1 title', () => {
+  const result = runPlan((f) => {
+    const key = 'designs/2026-08-04-store-search-layout-design.md';
+    f[key] = f[key].replace(/^# .*$\n/m, '');
+    return f;
+  });
+  expectCode(result, 'F121');
+});
+
+test('F122 — design document has fewer than three sections', () => {
+  const result = runPlan((f) => {
+    f['designs/2026-08-04-store-search-layout-design.md'] = `# Thin Design
+
+Date: 2026-08-04
+
+## 1. Requirement summary
+
+Too thin to be a design.
+`;
+    return f;
+  });
+  expectCode(result, 'F122');
+});
+
+test('F130 — warns about a design document with no plan of the same slug', () => {
+  const result = runPlan((f) => {
+    f['designs/2026-08-05-orphan-design.md'] = DESIGN_DOC.replace(
+      '# Store search layout Design',
+      '# Orphan Design',
+    );
+    return f;
+  });
+  expectCode(result, 'F130');
+});
+
+test('F131 — warns when both document sets are present', () => {
+  const result = runPlan((f) => {
+    // A spec-format change directory alongside the plan-format files.
+    f['plans/add-idle-timeout/proposal.md'] = `---\nchange: add-idle-timeout\nskip_specs: true\n---\n\n## Why\n\nx\n`;
+    f['plans/add-idle-timeout/tasks.md'] = `## 1. Group\n\n- [ ] 1.1 Do it\n      Covers: none\n      Depends: none\n      Verify: it works\n`;
+    return f;
+  });
+  expectCode(result, 'F131');
+});
+
+test('F132 — config.yaml declares a format the documents contradict', () => {
+  const result = runPlan((f) => {
+    f['config.yaml'] = 'format: spec\n';
+    return f;
+  });
+  expectCode(result, 'F132');
+  expectClean(result); // a warning
+});
+
+test('the spec-format tree is untouched by the plan-format checks', () => {
+  // Neither designs/ nor dated plan files exist here, so nothing extra fires.
+  const result = run();
+  expectClean(result);
+  for (const code of ['F101', 'F105', 'F109', 'F121', 'F122']) {
+    assert.ok(!codesOf(result).includes(code), `${code} should not fire on a spec-format tree`);
+  }
+});

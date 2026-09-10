@@ -29,6 +29,15 @@ These are not style preferences. Each one is enforced by a test in `tests/skill.
   `disable-model-invocation`.** Adding another requires changing that test deliberately.
 - **Every validator error code is documented in `references/artifacts.md`.** Add the doc row
   in the same commit as the check.
+- **Every rule exists in both document formats.** `references/artifacts.md` owns the `spec`
+  format and `references/plan-format.md` owns the `plan` format. A change to the workflow
+  usually has to land in both, or in the format table in `SKILL.md`.
+- **Validator checks are calibrated against real documents, not the templates.** The `F` checks
+  were loosened twice after being run against hand-written plans that verified things
+  differently. Before tightening a rule, run it against real output and see what it rejects.
+- **Read and write repository files with UTF-8 tools.** Windows PowerShell's `Get-Content -Raw`
+  reads UTF-8 as ANSI and silently corrupts every non-ASCII character, which then makes the
+  validator look wrong when it is not.
 
 ## Repository conventions
 

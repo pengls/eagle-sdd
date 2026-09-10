@@ -15,7 +15,7 @@
  */
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, relative, sep, resolve } from 'node:path';
+import { join, relative, sep, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_ROOT = 'docs/eagle-sdd';
@@ -397,6 +397,185 @@ function parseTasks(text) {
   return { tasks, errors, warnings };
 }
 
+// ------------------------------------------------------ plan-format checks
+
+const DATED_PLAN = /^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
+const DATED_DESIGN = /^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*-design\.md$/;
+
+/** The `format:` key of config.yaml, or null when absent/unreadable. */
+function readConfigFormat(root) {
+  const text = readIfFile(join(root, 'config.yaml'));
+  if (text === null) return null;
+  const m = /^\s*format\s*:\s*["']?([A-Za-z_-]+)["']?\s*$/m.exec(text);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/**
+ * Resolve a `**Spec:**` reference. Documents carry a repository-relative path,
+ * but the validator may be pointed at a tree anywhere, so try the plausible
+ * bases rather than assuming one.
+ */
+function resolveSpecRef(root, ref) {
+  const cleaned = ref.replace(/`/g, '').trim();
+  if (!cleaned) return null;
+  const candidates = [
+    resolve(process.cwd(), cleaned),
+    resolve(root, '..', '..', cleaned),
+    resolve(root, '..', cleaned),
+    resolve(root, cleaned),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * Split a plan document into its task blocks.
+ *
+ * Task headings are `Task N: <title>` at ANY level from `##` to `####` — real
+ * plans use both `##` and `###`. A non-task heading at or above the current
+ * task's level closes it, so a trailing "known risks" section is not absorbed
+ * into the last task.
+ */
+function splitTasks(text) {
+  const tasks = [];
+  let current = null;
+  for (const line of text.split(/\r?\n/)) {
+    const heading = /^(#{2,4})\s+(.*)$/.exec(line);
+    if (heading) {
+      const level = heading[1].length;
+      if (/^Task\b/i.test(heading[2])) {
+        if (current) tasks.push(current);
+        current = {
+          level,
+          title: heading[2].replace(/^Task\b\s*\d*\s*:?\s*/i, '').trim() || '(untitled)',
+          // A string, not an array: RegExp.test() coerces an array by joining on
+          // commas, which erases every line boundary and defeats `^`-anchored checks.
+          body: '',
+        };
+        continue;
+      }
+      if (current && level <= current.level) {
+        tasks.push(current);
+        current = null;
+        continue;
+      }
+    }
+    if (current) current.body += line + '\n';
+  }
+  if (current) tasks.push(current);
+  return tasks;
+}
+
+/**
+ * Validate the `plan` document set: designs/<date>-<slug>-design.md paired with
+ * plans/<date>-<slug>.md. Both directories are optional — a repository using
+ * only the `spec` format has neither, and that is not an error.
+ */
+function validatePlanFormat(root, err, warn) {
+  const designsDir = join(root, 'designs');
+  const plansDir = join(root, 'plans');
+  const schemaDir = join(root, 'specs');
+
+  const designFiles = filesIn(designsDir).filter((f) => f.toLowerCase().endsWith('.md'));
+  const planFiles = filesIn(plansDir).filter((f) => f.toLowerCase().endsWith('.md'));
+  const pairedSlugs = new Set();
+
+  for (const name of designFiles) {
+    const file = join(designsDir, name);
+    const here = rel(root, file);
+    if (!DATED_DESIGN.test(name)) {
+      err(here, 'F101', `Design filename should be <YYYY-MM-DD>-<slug>-design.md, got "${name}"`);
+    }
+    const text = stripComments(readIfFile(file) ?? '');
+    if (!/^#\s+\S/m.test(text)) {
+      err(here, 'F121', 'Design document has no "# " title');
+    }
+    const sections = (text.match(/^##\s+\S/gm) || []).length;
+    if (sections < 3) {
+      err(here, 'F122', `Design document has ${sections} "## " section(s); at least 3 expected`);
+    }
+  }
+
+  for (const name of planFiles) {
+    const file = join(plansDir, name);
+    const here = rel(root, file);
+    if (!DATED_PLAN.test(name)) {
+      err(here, 'F101', `Plan filename should be <YYYY-MM-DD>-<slug>.md, got "${name}"`);
+    }
+    const text = stripComments(readIfFile(file) ?? '');
+
+    if (!/^#\s+\S/m.test(text)) err(here, 'F105', 'Plan document has no "# " title');
+    if (!/\*\*Goal:\*\*/.test(text)) err(here, 'F106', 'Plan document is missing **Goal:**');
+    if (!/\*\*Architecture:\*\*/.test(text)) {
+      warn(here, 'F112', 'Plan document is missing **Architecture:**');
+    }
+
+    // **Spec:** is a convenience link, not the join key. Plenty of real plans
+    // omit it, so the pair is identified by the shared <date>-<slug> and the
+    // link is only checked when it is there.
+    const specLine = /\*\*Spec:\*\*\s*(.+)/.exec(text);
+    if (specLine && !resolveSpecRef(root, specLine[1])) {
+      err(here, 'F108', `**Spec:** does not resolve to an existing file: ${specLine[1].trim()}`);
+    }
+    pairedSlugs.add(name.replace(/\.md$/i, '').toLowerCase());
+
+    const tasks = splitTasks(text);
+    if (tasks.length === 0) {
+      err(here, 'F109', 'Plan document has no "Task N:" heading');
+    }
+    for (const task of tasks) {
+      if (!/^\s*-\s*\[[ xX]\]/m.test(task.body)) {
+        err(here, 'F110', `Task "${task.title}" has no "- [ ]" step`);
+      }
+      // Hand-written plans state the observation in Expected: and only add Run:
+      // when there is a command to run. A task that states neither is worth
+      // flagging, but it is a warning rather than an error: front-end tasks are
+      // routinely covered by a later end-to-end checklist rather than their own.
+      if (!/Expected:|Verify:/i.test(task.body)) {
+        warn(here, 'F111', `Task "${task.title}" states no Expected: or Verify:`);
+      }
+    }
+  }
+
+  for (const name of designFiles) {
+    const slug = name.replace(/-design\.md$/i, '').toLowerCase();
+    if (!pairedSlugs.has(slug)) {
+      warn(
+        rel(root, join(designsDir, name)),
+        'F130',
+        'Design document with no plan document of the same slug',
+      );
+    }
+  }
+
+  // A repository can migrate between formats, so a mix is a warning, not a
+  // failure — but two live descriptions of the system is worth being told about.
+  const hasSpecFormat =
+    dirsIn(plansDir).some((d) => d !== 'archive') || dirsIn(schemaDir).length > 0;
+  const hasPlanFormat = planFiles.length > 0 || designFiles.length > 0;
+  if (hasSpecFormat && hasPlanFormat) {
+    warn('.', 'F131', 'Repository contains both the spec and the plan document sets');
+  }
+
+  const declared = readConfigFormat(root);
+  if (declared === 'spec' && hasPlanFormat) {
+    warn(
+      rel(root, join(root, 'config.yaml')),
+      'F132',
+      'config.yaml declares format: spec, but plan-format documents exist',
+    );
+  }
+  if (declared === 'plan' && hasSpecFormat) {
+    warn(
+      rel(root, join(root, 'config.yaml')),
+      'F132',
+      'config.yaml declares format: plan, but spec-format documents exist',
+    );
+  }
+}
+
 // --------------------------------------------------------------- the check
 
 function validate(root) {
@@ -645,6 +824,8 @@ function validate(root) {
       }
     }
   }
+
+  validatePlanFormat(root, err, warn);
 
   return { errors, warnings };
 }

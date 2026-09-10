@@ -126,10 +126,26 @@ test('every file SKILL.md points at exists', () => {
 });
 
 test('the templates exist for every artifact the workflow produces', () => {
+  // spec format
   for (const name of ['proposal.md', 'spec.md', 'design.md', 'tasks.md']) {
     const path = join(SKILL_DIR, 'assets', 'templates', name);
     assert.ok(existsSync(path) && statSync(path).isFile(), `missing template ${name}`);
   }
+  // plan format
+  for (const name of ['design-doc.md', 'implementation-plan.md']) {
+    const path = join(SKILL_DIR, 'assets', 'templates', name);
+    assert.ok(existsSync(path) && statSync(path).isFile(), `missing plan-format template ${name}`);
+  }
+});
+
+test('both document formats are documented', () => {
+  const body = readFileSync(SKILL_MD, 'utf8');
+  for (const ref of ['references/artifacts.md', 'references/plan-format.md']) {
+    assert.ok(body.includes(ref), `SKILL.md does not point at ${ref}`);
+  }
+  // The default matters: a reader who stops after the format table must know
+  // which one applies when nobody has chosen.
+  assert.match(body, /`spec`\s*[—-]\s*the default/, 'SKILL.md must mark spec as the default format');
 });
 
 test('the validator is present and executable as a plain script', () => {
@@ -146,28 +162,33 @@ test('the validator is present and executable as a plain script', () => {
 
 test('references document exactly the codes the validator emits', () => {
   const source = readFileSync(join(SKILL_DIR, 'scripts', 'validate.mjs'), 'utf8');
-  const doc = readFileSync(join(SKILL_DIR, 'references', 'artifacts.md'), 'utf8');
+  // Both formats' grammars live in their own reference file, so the documented
+  // set is the union of the two.
+  const doc = [
+    readFileSync(join(SKILL_DIR, 'references', 'artifacts.md'), 'utf8'),
+    readFileSync(join(SKILL_DIR, 'references', 'plan-format.md'), 'utf8'),
+  ].join('\n');
 
   // Codes reach the reporter through two shapes — `errors.push({ code: 'D006' })`
   // and the `err(where, 'D001', ...)` helper — so match any quoted code literal
   // rather than the `code:` key, which only sees the first shape.
   const emitted = new Set([...source.matchAll(/'([A-Z]\d{3})'/g)].map((m) => m[1]));
-  assert.ok(emitted.size >= 30, `expected the full code set, found ${emitted.size}`);
+  assert.ok(emitted.size >= 40, `expected the full code set, found ${emitted.size}`);
 
   const undocumented = [...emitted].filter((c) => !doc.includes(c)).sort();
   assert.deepEqual(
     undocumented,
     [],
-    `validate.mjs emits codes not documented in references/artifacts.md: ${undocumented.join(', ')}`,
+    `validate.mjs emits codes not documented in the references: ${undocumented.join(', ')}`,
   );
 
   // The reverse direction: a documented code with no check behind it is a rule
-  // the reference promises and the code does not enforce.
+  // the references promise and the code does not enforce.
   const documented = new Set([...doc.matchAll(/\b([A-Z]\d{3})\b/g)].map((m) => m[1]));
   const unenforced = [...documented].filter((c) => !emitted.has(c)).sort();
   assert.deepEqual(
     unenforced,
     [],
-    `references/artifacts.md documents codes the validator never emits: ${unenforced.join(', ')}`,
+    `the references document codes the validator never emits: ${unenforced.join(', ')}`,
   );
 });

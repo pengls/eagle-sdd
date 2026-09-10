@@ -18,6 +18,7 @@ docs/eagle-sdd/            what it writes in your repo: canonical specs + change
 ## Contents
 
 - [Why this exists](#why-this-exists)
+- [Two document formats](#two-document-formats)
 - [Install](#install)
 - [Use](#use)
 - [What it produces](#what-it-produces)
@@ -63,6 +64,26 @@ explicitly as things that do not count.
   question with real options. A prose question ends the turn and leaves the decision dangling.
 - **Manual invocation only.** This is a deliberate, expensive workflow. It is configured so
   no agent can decide on its own that your request needs it.
+
+## Two document formats
+
+The skill writes one of two document sets. You choose once; the answer is recorded in
+`docs/eagle-sdd/config.yaml` and not asked again. **`spec` is the default.**
+
+| | `spec` — the default | `plan` |
+|---|---|---|
+| Shape | A canonical spec per capability, plus a delta per change | One dated design-and-plan pair per change |
+| Truth lives in | `docs/eagle-sdd/specs/<capability>/spec.md` | `docs/eagle-sdd/designs/<date>-<slug>-design.md` |
+| Change record | `docs/eagle-sdd/plans/<change-id>/` | `docs/eagle-sdd/plans/<date>-<slug>.md` |
+| Accumulates | Yes — Archive merges each delta into the canonical spec | No — every pair is frozen at its date |
+| Good when | The system needs one current description that stays true | Each change should stand alone as a dated record |
+| Costs you | The canonical tree has to be maintained at Archive | No single current description of the system exists |
+
+Choose `spec` when the question you ask most is *"what does this system do today?"*. Choose
+`plan` when it is *"why is it like this, and what did we agree to on that day?"*
+
+Everything else — the grill, the two approval gates, the evidence gate, the review protocol —
+is identical between them. Only what you write at the gate changes.
 
 ## Install
 
@@ -152,20 +173,33 @@ Invoke it by name. It will not trigger on its own.
 "spec this before coding"    any harness, said explicitly
 ```
 
-Then follow the gates. Two of them are the user's to pass:
+Then follow the gates. The first thing it settles is which document set to write; after that:
+
+**`spec` — the default**
 
 ```
 Orient → Grill → Propose ──⟂──> Specify ──⟂──> Design? → Plan → Implement → Verify → Archive
                             approve              approve
 ```
 
-`Design` is skipped unless the change crosses module boundaries, adds a dependency, alters a
-data model, or carries migration or security risk.
+**`plan`**
+
+```
+Orient → Grill → Design document ──⟂──> Plan document → Implement → Verify
+                                  approve
+```
+
+In the `spec` format, `Design` is skipped unless the change crosses module boundaries, adds a
+dependency, alters a data model, or carries migration risk. In the `plan` format the design
+document *is* step 4, so step 5 has nothing left to do.
 
 ## What it produces
 
+### `spec` — the default
+
 ```
 docs/eagle-sdd/
+├── config.yaml                         # format: spec | plan
 ├── specs/<capability>/spec.md          # canonical truth — only Archive writes here
 └── plans/
     ├── <change-id>/                    # one change in flight
@@ -190,7 +224,29 @@ A change never edits the canonical specs. They are written only when a change is
 which is what keeps the spec an accurate description of the system rather than a pile of
 overlapping proposals.
 
-A requirement is a header plus at least one scenario:
+### `plan`
+
+```
+docs/eagle-sdd/
+├── designs/<YYYY-MM-DD>-<slug>-design.md   # the design, frozen at its date
+└── plans/<YYYY-MM-DD>-<slug>.md            # its implementation plan
+```
+
+| Document | Written | Holds |
+|---|---|---|
+| `designs/<date>-<slug>-design.md` | step 4 | Requirement summary, confirmed decisions and the options they beat, current state, detailed design, out of scope, how to verify |
+| `plans/<date>-<slug>.md` | step 6 | `Goal` / `Architecture` / `Tech Stack` / `Spec`, a file-structure table, then `Task N` blocks — each with checkbox steps, a `Run:`/`Expected:` verification, and a commit |
+
+Neither file is rewritten. A decision that changes later becomes a new dated pair, which is the
+whole trade: you get a durable record of what was decided on a given day, and you give up a
+single current description of the system.
+
+The two are paired on the shared `<date>-<slug>`, not on a link inside the documents — plenty
+of real plans omit the `**Spec:**` line, so the validator does not require it.
+
+### A requirement, either way
+
+A `spec` requirement is a header plus at least one scenario:
 
 ```markdown
 ### Requirement: Session timeout
@@ -217,15 +273,15 @@ A task names the requirement it serves and how you will know it is done:
 
 | Step | Produces | Done when |
 |---|---|---|
-| 1. Orient | — | You can name the capabilities in play and the change id |
+| 1. Orient | the format, recorded | The document format is resolved and the change is named |
 | 2. Grill | rulings | Every open decision is answered or recorded with its cost if wrong |
-| 3. Propose | `proposal.md` | **User approves the capability list** |
-| 4. Specify | deltas | Every requirement has ≥1 scenario; validator clean |
-| 5. Design | `design.md` *(conditional)* | Decisions resolved, or stated why it is skipped |
-| 6. Plan | `tasks.md` | Every requirement covered; dependency graph acyclic |
+| 3. Propose | `proposal.md` *(`spec` only)* | **User approves the capability list** |
+| 4. Specify | deltas, or the design document | Every requirement has ≥1 scenario, or the design pair has its decisions; validator clean |
+| 5. Design | `design.md` *(`spec`, conditional)* | Decisions resolved, or stated why it is skipped |
+| 6. Plan | `tasks.md`, or the implementation plan | Every requirement covered; or every task has its steps and a verification |
 | 7. Implement | code | Every box ticked after reading its verification output |
 | 8. Verify | report | Every requirement maps to evidence run and read this session |
-| 9. Archive | merged specs | Canonical specs updated; plan archived; validator clean |
+| 9. Archive | merged specs *(no-op for `plan`)* | Validator clean across the whole tree |
 
 Before starting, the workflow routes itself. A rename, a typo, a dependency bump, or a bug
 with one obvious cause is **declined** — it says so and stops, rather than spending an hour
@@ -243,8 +299,9 @@ node skills/eagle-sdd/scripts/validate.mjs path/to/tree
 node skills/eagle-sdd/scripts/validate.mjs --help
 ```
 
-Zero dependencies, Node 18+. Exits `1` on any error. **31 codes — 28 errors, 3 warnings.**
-A sample of what it catches:
+Zero dependencies, Node 18+. Exits `1` on any error. **44 codes — 36 errors, 8 warnings.** The
+validator checks whichever document set it finds, so a `plan`-format repository is checked
+without configuration. A sample:
 
 | Code | Caught |
 |---|---|
@@ -256,14 +313,24 @@ A sample of what it catches:
 | `T004` | A task covers a name that resolves to no requirement |
 | `T006` | The dependency graph has a cycle |
 | `C001` | A delta was written directly into the canonical specs |
+| `F108` | A plan's `**Spec:**` points at a design document that is not there |
+| `F110` | A plan task with no checkbox step |
+| `F131` | A repository holding both document sets (warning) |
 
-The full list lives in
-[`references/artifacts.md`](skills/eagle-sdd/references/artifacts.md#validation-errors).
+The full lists live in
+[`references/artifacts.md`](skills/eagle-sdd/references/artifacts.md#validation-errors) and
+[`references/plan-format.md`](skills/eagle-sdd/references/plan-format.md#checks).
 
 **The validator is optional.** The workflow runs on the checklist alone; the script is an
 accelerator for when you have Node. It is a real check, though — the test suite proves every
-one of the 31 codes actually fires, and that the reference documents exactly those codes and
+one of the 44 codes actually fires, and that the references document exactly those codes and
 no others.
+
+**The checks were calibrated against real documents, not just the templates.** The first
+version of the `plan` checks required a `**Spec:**` line, a `### Task` heading, and a
+`Run:`/`Expected:` pair on every task — and rejected most of eight hand-written plan documents
+that had legitimately verified things differently. The rules were loosened to match what
+careful humans actually produce, while the omissions that matter are still reported.
 
 ## Harness support
 
@@ -301,10 +368,11 @@ one addition.
 skills/eagle-sdd/
 ├── SKILL.md                    the workflow spine: steps, gates, failure modes (222 lines)
 ├── references/
-│   ├── artifacts.md            file grammar, delta operations, every error code
+│   ├── artifacts.md            spec format: file grammar, delta operations, every error code
+│   ├── plan-format.md          plan format: the pair's shape, and its checks
 │   ├── verification.md         the evidence gate and the review protocol
 │   └── harnesses.md            action → tool mapping per harness
-├── assets/templates/           proposal, spec, design, tasks
+├── assets/templates/           proposal, spec, design, tasks + design-doc, implementation-plan
 ├── scripts/validate.mjs        zero-dependency structural validator
 └── agents/openai.yaml          Codex invocation policy
 install.sh / install.ps1        remote installer — download, link, update, uninstall
