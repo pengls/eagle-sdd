@@ -1,0 +1,13 @@
+# Install artifacts — the skills here are links back into skills/, never sources.
+.agents/skills/
+.claude/skills/
+.copilot/skills/
+.dsh/skills/
+
+# Scratch trees from research and manual testing.
+.tmp-*/
+*.pre-eagle-sdd-*
+
+node_modules/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+# Normalise line endings in the repository; check out LF everywhere.
+# The skill body is read by agents on every platform, and a stray CRLF in a
+# scenario bullet is a class of bug nobody wants to debug.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

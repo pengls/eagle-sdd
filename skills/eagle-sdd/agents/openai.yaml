@@ -1,0 +1,7 @@
+interface:
+  display_name: "Eagle SDD"
+  short_description: "Use only when the user explicitly asks for spec-driven development by name — \"/eagle-sdd\", \"run spec-driven development\", \"SDD\", \"write the spec first\", \"spec this before coding\", \"grill me then spec it\"."
+policy:
+  # This workflow is invoked deliberately, never inferred. Codex reads
+  # invocation policy from this sidecar file, not from SKILL.md frontmatter.
+  allow_implicit_invocation: false

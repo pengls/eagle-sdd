@@ -1,0 +1,45 @@
+# Repository instructions
+
+This repo ships one portable agent skill: `eagle-sdd`. Read `README.md` for
+what it does and how it installs.
+
+## Layout
+
+- `skills/eagle-sdd/` — the skill. `SKILL.md` is the workflow spine; everything
+  else is reference loaded on demand.
+- `scripts/` — installers that link the skill into each harness's skill root.
+- `tests/` — Node test suites. `node --test` runs both.
+- `docs/research/` — primary-source notes on OpenSpec, Superpowers, and MiMo Code's compose
+  mode. These are the evidence behind the design; read them before changing a mechanic.
+- `docs/eagle-sdd/` — this repository's own specs, written with the skill itself.
+
+## Rules for editing the skill
+
+These are not style preferences. Each one is enforced by a test in `tests/skill.test.mjs`.
+
+- **Name actions, never tools.** Write "ask the user a structured question", not
+  `AskUserQuestion`. `references/harnesses.md` owns the translation.
+- **The description states when to use the skill, never what it does.** A description that
+  summarises the workflow becomes a shortcut the agent follows instead of reading the body.
+- **`SKILL.md` stays under 500 lines.** Push detail into `references/`; it loads on demand.
+- **The frontmatter field budget is exactly the six portable Agent Skills fields plus
+  `disable-model-invocation`.** Adding another requires changing that test deliberately.
+- **Every validator error code is documented in `references/artifacts.md`.** Add the doc row
+  in the same commit as the check.
+
+## Repository conventions
+
+- `main` is the default branch. Commit messages are imperative and scoped, e.g.
+  `validator: reject a MODIFIED that drops a scenario`.
+- The canonical specs under `docs/eagle-sdd/specs/` are this project's source of truth for
+  its own behaviour. Change them through a plan under `docs/eagle-sdd/plans/`, not by editing
+  the spec directly — that is the workflow this repo exists to demonstrate.
+
+## Before committing
+
+```sh
+node --test
+node skills/eagle-sdd/scripts/validate.mjs docs/eagle-sdd
+```
+
+Both must pass. A validator check that no test covers is a check nobody has seen fire.

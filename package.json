@@ -1,0 +1,19 @@
+{
+  "name": "eagle-sdd",
+  "version": "1.0.0",
+  "description": "A portable, manually-invoked spec-driven development skill for Codex, Claude Code, DeepSeek Harness, and any other agent that can read files.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "validate": "node skills/eagle-sdd/scripts/validate.mjs",
+    "install:windows": "powershell -NoProfile -File scripts/install.ps1",
+    "install:posix": "sh scripts/install.sh"
+  },
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  }
+}
