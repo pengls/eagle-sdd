@@ -58,7 +58,7 @@
 param(
     [string]$Ref = $(if ($env:EAGLE_SDD_REF) { $env:EAGLE_SDD_REF } else { 'main' }),
     [string]$Scope = $(if ($env:EAGLE_SDD_SCOPE) { $env:EAGLE_SDD_SCOPE } else { '' }),
-    [string]$Harness = $(if ($env:EAGLE_SDD_HARNESS) { $env:EAGLE_SDD_HARNESS } else { 'agents,claude' }),
+    [string[]]$Harness = $(if ($env:EAGLE_SDD_HARNESS) { $env:EAGLE_SDD_HARNESS } else { 'agents,claude' }),
     [string]$InstallRoot = $(if ($env:EAGLE_SDD_HOME) { $env:EAGLE_SDD_HOME } else { Join-Path $HOME '.eagle-sdd' }),
     [string]$Local,
     [switch]$Copy,
@@ -95,7 +95,14 @@ $isLocal = $null -ne $localSkill
 if (-not $Scope) { $Scope = if ($isLocal) { 'both' } else { 'user' } }
 if ($Scope -notin @('project', 'user', 'both')) { throw "-Scope must be project, user, or both (got '$Scope')" }
 
-$harnesses = $Harness.Split(',') | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ }
+# `-Harness agents,dsh` binds as an array while `-Harness "agents,dsh"` and
+# `-File ... -Harness agents,dsh` arrive as one string. Splitting every element
+# accepts all three; declaring the parameter as [string] instead throws
+# "Cannot convert value to type System.String" on the array form.
+$harnesses = $Harness |
+    ForEach-Object { $_.Split(',') } |
+    ForEach-Object { $_.Trim().ToLowerInvariant() } |
+    Where-Object { $_ }
 $known = @('agents', 'claude', 'dsh', 'copilot', 'gemini')
 $unknown = $harnesses | Where-Object { $_ -notin $known }
 if ($unknown) { throw "-Harness has unknown values: $($unknown -join ', '). Known: $($known -join ', ')" }
