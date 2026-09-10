@@ -5,295 +5,307 @@ license: MIT
 compatibility: Needs a writable repository and a way to run a command. The optional validator needs Node 18 or newer.
 disable-model-invocation: true
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   workflow: spec-driven-development
 ---
 
 # Spec-Driven Development
 
-Write the spec first. Implement against it. Verify against it. Then fold it into the truth.
+Write the design first. Plan it task by task. Implement against the plan. Verify against the
+design. Then stop.
 
 ## The contract
 
-Three rules carry this workflow. Everything else is mechanics.
+Four rules carry this workflow. Everything else is mechanics.
 
-1. **No implementation before the spec is approved.** The spec is a human decision, not an agent artifact. You draft it; the user approves it.
-2. **No completion claim without fresh verification evidence.** A task is done when you have run a check, read its output, and reported what it said — in this session. Prior runs and your own confidence are not evidence.
-3. **The documents on disk are the source of truth.** When code and a spec disagree, exactly one of them is wrong, and you fix it on purpose. Silent drift is the only real failure mode of this workflow.
+1. **No implementation before the design is approved.** The design is a human decision, not an
+   agent artifact. You draft it; the user approves it.
+2. **No plan without a design.** A plan document belongs to exactly one design document of the
+   same name. Writing the plan first inverts the pair and leaves no record of why.
+3. **No completion claim without fresh verification evidence.** A task is done when you have run
+   a check, read its output, and reported what it said — in this session. Prior runs and
+   subagent success reports are not evidence.
+4. **A dated document is frozen.** Neither document of a pair is rewritten after it is written.
+   A decision that changes later becomes a new dated pair, not an edit.
 
 ## Scope check
 
-This workflow costs real time. Route before you commit to it, and say your route out loud in one line.
+This workflow costs real time — a design document, a plan, and a task-by-task execution. Route
+before you commit to it, and say your route out loud in one line.
 
 | The request | Route |
 |---|---|
 | Mechanical edit — rename, typo, formatting, dependency bump | Say so. Do not open this workflow. |
 | A bug with one plausible cause | Fix it. |
-| A clear requirement that an existing spec already covers | Go to [Implement](#7-implement). |
+| A change that fits in one commit and one paragraph | Say so. Do not open this workflow. |
 | Ambiguous, multi-session, or it changes a shared contract | Run the full workflow. |
 | Greenfield | Run the full workflow. |
 
-## Two document formats
-
-This skill writes one of two document sets. The choice is made once per repository, in step 1.
-
-| | `spec` — the default | `plan` |
-|---|---|---|
-| Shape | A canonical spec per capability, plus a delta per change | One dated design-and-plan pair per change |
-| Truth lives in | `docs/eagle-sdd/specs/<capability>/spec.md` | `docs/eagle-sdd/designs/<date>-<slug>-design.md` |
-| Change record | `docs/eagle-sdd/plans/<change-id>/` | `docs/eagle-sdd/plans/<date>-<slug>.md` |
-| Accumulates | Yes — Archive merges each delta into the canonical spec | No — every pair is frozen at its date |
-| Good when | The system needs one current description that stays true | Each change should stand alone as a dated record |
-| Costs you | The canonical tree has to be maintained at Archive | There is no single current description of the system |
-
-Everything else — the grill, the gates, the evidence gate, the review protocol — is identical
-between them. Only what you write at the gate changes.
-
-`references/artifacts.md` is the grammar for `spec`. `references/plan-format.md` is the grammar
-for `plan`.
+Two things the scope check does **not** license: skipping the grill because the request sounds
+clear, and skipping verification because the change is small. If you opened the workflow, you
+run it.
 
 ## The loop
 
-Every step names what you produce and the condition that ends it. Do not leave a step until its condition holds.
+Seven steps. Each names what it produces and the condition that ends it. Do not leave a step
+until its condition holds, and do not begin a step before the one it depends on is finished.
 
 ### 1. Orient
 
-**Resolve the format before anything else.** Read `docs/eagle-sdd/config.yaml`:
-
-- It names `spec` or `plan` → use that, and do not ask again.
-- It is absent → ask, as a **structured question with `spec` recommended**, then write the answer to `docs/eagle-sdd/config.yaml`, creating the directory if needed.
-
-A run may override the recorded format when the user asks for the other one. Rewrite `config.yaml` when it does, so the next run does not have to ask.
-
-Never infer the format from the size of the request. A one-line change is still a `plan` change if that is what the repository uses.
-
-Then read that format's documents:
-
-| Format | Read |
-|---|---|
-| `spec` | `docs/eagle-sdd/specs/` for the capabilities that exist, `docs/eagle-sdd/plans/` for changes in flight |
-| `plan` | `docs/eagle-sdd/designs/` and `docs/eagle-sdd/plans/` for prior pairs, so you do not re-decide something already settled |
+Read `docs/eagle-sdd/designs/` and `docs/eagle-sdd/plans/`. You are looking for a prior pair
+covering the same ground — a decision already made, an approach already rejected, a file
+already touched. Re-deciding something the repository already settled is the most common way
+this workflow wastes the user's time.
 
 Then name the change:
 
-| Format | Name | Becomes |
-|---|---|---|
-| `spec` | kebab-case, act-shaped, describing the delta — `add-session-expiry`, not `sessions` | `docs/eagle-sdd/plans/<change-id>/` |
-| `plan` | kebab-case, act-shaped; the date is added for you | `docs/eagle-sdd/designs/<YYYY-MM-DD>-<slug>-design.md` and `docs/eagle-sdd/plans/<YYYY-MM-DD>-<slug>.md` |
+- **Slug** — kebab-case, act-shaped, describing the change rather than the feature:
+  `store-search-layout`, not `store`.
+- **Date** — today, `YYYY-MM-DD`.
+- **Identity** — `<date>-<slug>`. This is the change's name everywhere.
 
-Use today's date for a `plan` change, and the same slug in both files. The validator joins the pair on it.
+It becomes exactly two files:
 
-**Done when** the format is resolved and recorded, and you can state in one sentence each: what the documents already cover, what this change alters, and the change's name.
+```
+docs/eagle-sdd/designs/<date>-<slug>-design.md
+docs/eagle-sdd/plans/<date>-<slug>.md
+```
+
+The date and slug must match in both. The validator pairs them on it; nothing else joins them.
+
+If a pair with that identity already exists, pick a different slug — never overwrite a frozen
+document. A change of mind is a new pair with a new date.
+
+**Done when** you can state in one sentence each: what the existing documents already cover,
+what this change alters, and the change's identity.
 
 ### 2. Grill
 
-Resolve ambiguity before you write anything. Ask about one decision at a time, and ask it as a **structured question with options**, not as prose.
+Resolve ambiguity before you write anything. Ask about one decision at a time, and ask it as a
+**structured question with options**, not as prose.
 
-A prose question ends your turn and leaves the decision dangling. A structured question carries the options, forces the decision, and lets you continue in the same breath. This is the single highest-leverage mechanic in this workflow.
+A prose question ends your turn and leaves the decision dangling. A structured question carries
+the options, forces the decision, and lets you continue in the same breath. This is the single
+highest-leverage mechanic in this workflow, and step 3 depends on it: every decision you do not
+settle here becomes a paragraph the user has to read and argue with later.
 
 Rules of the grill:
 
-- **Ask about decisions, not facts.** Read the repository instead of asking what the repository already says.
-- **Offer 2–4 concrete options and say which one you recommend, and why.** "What do you want?" is not a question; it is a shrug.
+- **Ask about decisions, not facts.** Read the repository instead of asking what the repository
+  already says.
+- **Offer 2–4 concrete options and say which one you recommend, and why.** "What do you want?"
+  is not a question; it is a shrug.
 - **One decision per question.** Bundling decisions produces bundled answers.
-- **Stop when the remaining unknowns cannot change the spec.** Curiosity is not ambiguity.
+- **Ask until the design has no branches left.** The test is not "do I feel informed" but "could
+  two competent people write different design documents from what I have". If yes, keep asking.
+- **Stop when the remaining unknowns cannot change the design.** Curiosity is not ambiguity.
 - **Destructive or irreversible actions are never assumed.** Ask, always.
 
-If the user declares a decision closed, or tells you to proceed on your judgement, record it as a ruling rather than asking again:
+If the user declares a decision closed, or tells you to proceed on your judgement, record it as
+a ruling rather than asking again — and it goes into the design document, not into a comment:
 
 ```markdown
 > **Ruling:** <what you decided> — <why> — <what it costs if wrong>
 ```
 
-**Done when** every open decision is either answered by the user or recorded as a ruling, and none of them can still change the requirement set.
+**Done when** every open decision is either answered by the user or recorded as a ruling, and
+none of them can still change what you are about to build.
 
-### 3. Propose
+### 3. Design document
 
-**In the `plan` format, skip this step.** The design document written in step 4 carries the why and the what; a proposal on top of it would only be a second place for the same decision to live. Say that you are skipping it and go to step 4.
+Write `docs/eagle-sdd/designs/<date>-<slug>-design.md` from `assets/templates/design-doc.md`.
+Read `references/plan-format.md` for the grammar and the checks.
 
-The rest of this step is `spec` only.
+Six sections, in order:
 
-Write `docs/eagle-sdd/plans/<change-id>/proposal.md` from `assets/templates/proposal.md`. It is one to two pages and answers *why* and *what*, never *how*.
+| Section | Holds |
+|---|---|
+| 1. Requirement summary | What is being asked, from the user's side, in two or three sentences |
+| 2. Confirmed decisions | Every decision from step 2, as `Question \| Decision`, including the option it beat |
+| 3. Current state and problem | What exists today, with real paths, and specifically what is wrong with it |
+| 4. Detailed design | The change itself, with code where code is more precise than prose |
+| 5. Out of scope | What this deliberately does not touch, and what it must not break |
+| 6. How to verify | How a human confirms the feature is actually right |
 
-The **Capabilities** section is the load-bearing part. Every capability you list becomes a file you must write in the next step, so this section is the contract between this step and that one. List a capability as **new** when it introduces a capability, and as **modified** only when a requirement's observable behavior changes. Pure refactors, tooling, and docs change no behavior, and therefore change no spec.
+Section 2 is the one that earns the document its keep. A decision recorded without the option it
+beat gets relitigated by the next reader; a decision recorded with it does not.
 
-**Run `node <skill-dir>/scripts/validate.mjs` after this step.** It checks that what you declared here is what you deliver below.
+Write the document in the language the user is working in.
 
-> **GATE — the user approves the proposal before you write specs.** Present the capability list and stop.
+> **GATE — the user approves the design before you write the plan.** Present the decisions and
+> the out-of-scope list, and stop. This is the last cheap moment to change your mind: everything
+> downstream is derived from this document, and it is frozen once approved.
 
-**Done when** the proposal exists and the user has approved its capability list.
+**Done when** the design document exists and the user has approved it.
 
-### 4. Specify
+### 4. Plan document
 
-**In the `plan` format, write `docs/eagle-sdd/designs/<YYYY-MM-DD>-<slug>-design.md` from `assets/templates/design-doc.md` instead**, per [The `plan` format](references/plan-format.md). There are no capabilities and no deltas: the dated design document is the entire record, and it is what the gate below approves. The section `## 2. Confirmed decisions` is the one that earns the document its keep — it records each choice *and the option it beat*, so nobody relitigates it later.
+Write `docs/eagle-sdd/plans/<date>-<slug>.md` from `assets/templates/implementation-plan.md`.
+Same date, same slug as the design it implements.
 
-Read `references/plan-format.md` for the required shape. Everything after this paragraph applies only to `spec`.
+Four header lines open it, and each does a job:
 
-Write one delta file per declared capability at `docs/eagle-sdd/plans/<change-id>/specs/<capability>/spec.md`, from `assets/templates/spec.md`.
+- `**Goal:**` — what is true about the system after this plan runs that is not true now. A fresh
+  agent reads this before touching anything.
+- `**Architecture:**` — the shape of the change: which layers move, which pattern is used, and
+  what deliberately does not change.
+- `**Tech Stack:**` — only what this change actually touches.
+- `**Spec:**` — the path to its design document. This is the link back to the reasoning.
 
-A delta holds only what changes, under `## ADDED`, `## MODIFIED`, `## REMOVED`, or `## RENAMED Requirements`. The canonical spec under `docs/eagle-sdd/specs/` is not touched until [Archive](#9-archive).
+Then a file-structure table (every file created, modified, or deleted, and its role), then the
+tasks.
 
-The unit of specification is a **requirement with at least one scenario**:
+**A task is one independently verifiable work item.** Every task has:
 
-```markdown
-### Requirement: Session timeout
-Sessions SHALL expire after 30 minutes of inactivity.
+1. **`### Task N: <title>`** — at any heading level from `##` to `####`.
+2. **`**Files:**`** — the files it touches, and where in them.
+3. **Checkbox steps** — `- [ ] **Step N: …**`, in order.
+4. **A verification step** — `Run:` with a command and `Expected:` with the specific observable
+   outcome; or `Verify:` with the observation when there is no command to run.
+5. **A commit step** — `git add` the files, `git commit`. The commit is what makes a task cheap
+   to undo, and the git history becomes the execution record the design document cannot hold.
 
-#### Scenario: Idle session expires
-- **WHEN** a session is idle for 30 minutes
-- **THEN** the next request is rejected with 401
-```
+Rules that make a plan executable by someone who was not in the conversation — which is the
+normal case, and often a fresh agent with no memory of it:
 
-A scenario is a test you have not written yet. If you cannot phrase one as an observable WHEN/THEN, the requirement is not specified yet — it is a wish.
+- **Show the code in the step.** "Update the handler to reject expired sessions" is not a step.
+  The replacement code is. If a step is "replace X with Y", show both.
+- **One task, one sitting.** A task that cannot be finished, verified, and committed in one go
+  should be two tasks.
+- **Order by dependency.** A task never depends on one that comes later.
+- **State the observation, not the intention.** `Expected: exit code 0, no error output` is
+  checkable. `Expected: it works` is not.
+- **Reserve a separate verification task** for integration behavior that genuinely spans several
+  tasks — an end-to-end checklist, for instance. Everything else verifies in its own task.
 
-Two rules that bite:
+> **GATE — the user sees the task list before implementation starts.** Present the task titles
+> and the file-structure table, and stop.
 
-- **A `MODIFIED` requirement restates the requirement in full** — the text and every surviving scenario. A partial restatement silently deletes whatever you left out, and the validator will reject a modification that drops a scenario the canonical spec still has. Adding a new concern to an unchanged requirement is `ADDED`, not `MODIFIED`.
-- **Renaming a requirement is a `RENAMED` operation**, never a quiet edit of the header. Everything downstream — tasks, tests, review — joins on that name.
+**Done when** every task has its steps, its verification, and its commit; the plan names its
+design document; and `node <skill-dir>/scripts/validate.mjs` reports no errors.
 
-Read `references/artifacts.md` for the exact grammar, the four delta operations, and the error list.
+### 5. Implement
 
-**Done when** every capability named in the proposal has a delta, every requirement has at least one scenario, and `validate.mjs` reports no errors.
+Work the tasks in order, one at a time.
 
-> **GATE — the user approves the specs before you plan work.** This is the last cheap moment to change your mind.
+For each task:
 
-### 5. Design
+1. Make the change the steps describe.
+2. Run the verification step.
+3. **Read the output**, including the exit code.
+4. Only then tick the boxes.
+5. Commit, with the message the plan gives.
 
-Write `docs/eagle-sdd/plans/<change-id>/design.md` **only if** the change crosses module boundaries, adds a dependency, alters a data model, or carries migration or security risk. Otherwise skip it and say that you skipped it.
+Tick a box **after** you have read the verification output, never before. A tick is a claim, and
+rule 3 applies to it.
 
-**In the `plan` format this step does not exist.** The design document from step 4 already holds the decisions, the alternatives they beat, and what is out of scope. Say so and go to step 6.
+**When a task turns out to be wrong** — the design was misread, the approach does not work, a
+file is not where the plan said — stop and fix the document before the code. In the normal case
+the design document is frozen, so a wrong design is corrected by a *new dated pair*, not by an
+edit; the plan is not frozen in the same way, but changing it silently is the same failure in a
+smaller costume. Never edit code to match a design you no longer believe: that is how drift
+starts, and it is invisible in the diff.
 
-Design records decisions with their alternatives and their risks. It does not restate the spec — link to it.
+**When a task blocks** — a dependency is missing, a credential is absent, the environment cannot
+run the check — report the block with what you tried, and stop. Do not silence it by weakening
+the verification, and do not tick a box you could not check.
 
-**Done when** either `design.md` exists with its decisions resolved, or you have stated why it does not.
+**Done when** every box is ticked, every verification step has been run and read in this session,
+and every task is committed.
 
-### 6. Plan
+### 6. Verify
 
-**In the `plan` format, write `docs/eagle-sdd/plans/<YYYY-MM-DD>-<slug>.md` from `assets/templates/implementation-plan.md`** — same date and same slug as its design document, which is how the validator joins the pair. The four header lines earn their place: `**Spec:**` is the link back to the reasoning, and `**Goal:**` is what a fresh agent reads before it touches anything.
+Read `references/verification.md` and run its gate. Verification asks a different question from
+"do the tests pass": it asks **is this the thing we agreed to build**, section by section against
+the design document.
 
-Tasks here carry a `Run:`/`Expected:` verification pair and a commit step, in place of the `Covers:`/`Depends:`/`Verify:` tags below. The obligation is the same: a task whose completion nobody can observe is a heading, not a task. Put the actual code in the step — the plan is executed by someone who was not in this conversation, quite often by an agent with no memory of it.
+The per-task `Run:`/`Expected:` pairs cover the mechanical half — each task did what its steps
+said. This step is the half they cannot cover:
 
-Everything after this paragraph applies only to `spec`.
+- Walk the design document's `## 4. Detailed design` and `## 1. Requirement summary`. For each
+  part, name the evidence — the test, the command, the observation — and say whether you
+  produced it in this session.
+- Check `## 5. Out of scope` actually held: nothing outside it changed.
+- Run what `## 6. How to verify` prescribes. That section exists precisely because it is the
+  part no task-level check covers.
 
-Write `docs/eagle-sdd/plans/<change-id>/tasks.md`. Each task is one independently verifiable work item with an observable acceptance criterion:
+Parts of the design with no evidence are not verified, however green the suite is.
 
-```markdown
-- [ ] 2.1 Add expiry check to the session middleware
-      Covers: Session timeout
-      Depends: 1.2
-      Verify: `pnpm test session-expiry` passes with the new case
-```
+Dispatched work is verified by a fresh reviewer with no memory of writing it — and returns
+separate verdicts for spec compliance and for correctness, because a change can pass one and
+fail the other. A worker reporting success is not evidence; it is a claim to be checked.
 
-The three tags are not decoration:
+**Done when** every part of the design maps to evidence you ran and read, and any gap is
+reported to the user as a gap rather than smoothed over.
 
-- `Covers:` joins the task to a requirement **by its exact name**. Every requirement must be covered by at least one task. This is what stops the proposal from being a write-only document — without it, nothing checks that what you promised to specify ever became work.
-- `Depends:` joins tasks into a graph. It must resolve, and it must not cycle.
-- `Verify:` states the command or observation that settles the task.
+### 7. Close
 
-Order tasks so that dependencies come first and each task is small enough to finish and verify in one sitting.
+There is no merge and no archive step. The pair was frozen at its date when it was written.
 
-**Done when** every requirement is covered, every dependency resolves, the graph is acyclic, and `validate.mjs` reports no errors.
+1. Re-read the plan document. Confirm every box is ticked and every task is committed.
+2. Confirm the plan's `**Spec:**` line still resolves to its design document.
+3. Run `node <skill-dir>/scripts/validate.mjs` and confirm it is clean.
+4. Report to the user: the change's identity, the two file paths, and anything in step 6 that
+   stayed unverified.
 
-### 7. Implement
+**Done when** the validator is clean, the pair is complete, and the user has the result.
 
-Work the tasks in order. For each one: make the change, run its `Verify:` check — or its `Run:`/`Expected:` pair in the `plan` format — read the output, then tick the box.
+## Gates
 
-Tick the box **after** you have read the verification output, never before. A tick is a claim, and rule 2 applies to it.
+Two, both blocking. Both exist for the same reason: everything downstream is derived from what
+comes before, so an unapproved upstream document is a guess that gets built at full price.
 
-If a task turns out to be wrong — the requirement was misread, the approach does not work — stop and go back. Fix the documents first, then the tasks, then the code. Editing code to match a spec you no longer believe is how drift starts.
+| After | The user approves |
+|---|---|
+| Step 3, the design document | The decisions, and what is out of scope |
+| Step 4, the plan document | The task breakdown, before any code is written |
 
-**Done when** every box is ticked and every check — `Verify:` or the `Run:`/`Expected:` pair — has been run and read in this session.
-
-### 8. Verify
-
-Read `references/verification.md` and run its gate. Verification asks a different question from "do the tests pass": it asks **does the code do what the document says**, requirement by requirement.
-
-Walk the requirements requirement by requirement — the deltas in the `spec` format, or the design document's sections in the `plan` format. For each one, name the evidence — the test, the command, the observation — and say whether you produced it in this session. Requirements with no evidence are not verified, however green the suite is.
-
-In the `plan` format the per-task `Run:`/`Expected:` pairs are the mechanical half; this step is the half they cannot cover, which is whether the feature is actually right. That is what the design document's *How to verify* section is for.
-
-Dispatched work is verified by a fresh reviewer with no memory of writing it. A worker reporting success is not evidence; it is a claim to be checked.
-
-**Done when** every requirement maps to evidence you ran and read, and any gap is reported to the user as a gap rather than smoothed over.
-
-### 9. Archive
-
-Only after verification passes.
-
-**In the `plan` format there is nothing to merge.** The pair was frozen at its date the moment it was written, and neither file is rewritten. Confirm that the plan's `**Spec:**` link still resolves, that every box is ticked, and that `validate.mjs` is clean, then stop. Archiving in this format means leaving the files where they are.
-
-The rest of this step is `spec` only.
-
-Merge the deltas into `docs/eagle-sdd/specs/` in this fixed order, matching requirements by normalized header name:
-
-**RENAMED → REMOVED → MODIFIED → ADDED**
-
-The order is not arbitrary: renaming first means later operations resolve against final names, and removing before adding means a replacement requirement never collides with the one it replaces. Applied in this order the merge is idempotent, so re-running it cannot corrupt the spec.
-
-Then move the plan to `docs/eagle-sdd/plans/archive/<change-id>/`. Keep it — it is the record of why the spec says what it says.
-
-**Done when** the documents reflect the change and `validate.mjs` reports no errors across the whole tree — the canonical specs in the `spec` format, the resolved design link in the `plan` format.
+A gate is passed by the user, not by you deciding it is fine, and not by the user having said
+something encouraging earlier. If you are unsure whether a gate passed, it did not.
 
 ## When you feel the pull to skip
 
-These are the thoughts that precede a broken spec. Each one is a signal, not a reason.
+These are the thoughts that precede a broken change. Each one is a signal, not a reason.
 
 | The thought | What is actually true |
 |---|---|
-| "This is simple enough to skip the spec" | Simple changes are where drift starts unnoticed. If it is truly mechanical, the scope check already routed you out. |
-| "I'll write the spec after, once I know the shape" | A spec written after the code describes the code, bugs included. It cannot tell you what you should have built. |
-| "The tests pass, so it's verified" | Tests answer "does it work". The spec answers "is this the thing we agreed to build". They are different questions. |
-| "I already ran that check earlier" | Prior runs are not evidence. State is not preserved between then and now. Run it again. |
-| "The subagent said it was done" | A success report is a claim. Go and check the artifact. |
-| "The user is waiting, I'll confirm the spec later" | An unapproved spec is a guess. You will build the wrong thing faster. |
-| "This requirement is obvious, it needs no scenario" | Then writing the WHEN/THEN takes twenty seconds, and it is the only thing that makes it testable. |
-| "I'll clean up the delta wording at archive time" | Archive is a merge, not an edit. Restate it fully now. |
+| "This is simple enough to skip the design" | Simple changes are where drift starts unnoticed. If it is truly mechanical, the scope check already routed you out. |
+| "I'll write the design after, once I know the shape" | A design written after the code describes the code, bugs included. It cannot tell you what you should have built. |
 | "The design is obvious, I'll write the plan first" | The plan's `**Spec:**` points at the design. Writing it first inverts the pair and leaves no record of why. |
-| "I'll fold this decision into the design doc later" | In the `plan` format that document is frozen at its date. A changed decision is a new dated pair, not an edit. |
-| "The plan doesn't need a Verify step, it's clearly fine" | Then the step takes twenty seconds, and it is the only thing that tells the next reader what "done" meant. |
+| "I already asked enough questions" | The test is whether two competent people could write different designs from what you have, not whether you feel informed. |
+| "The tests pass, so it's verified" | Tests answer "does it work". The design answers "is this what we agreed to build". Different questions. |
+| "I already ran that check earlier" | Prior runs are not evidence. State is not preserved between then and now. Run it again. |
+| "The subagent said it was done" | A success report is a claim. Go and read the artifact. |
+| "This task is clearly fine, it needs no Expected:" | Then writing the observation takes twenty seconds, and it is the only thing that tells the next reader what "done" meant. |
+| "I'll fold this decision into the design doc later" | That document is frozen at its date. A changed decision is a new dated pair, not an edit. |
+| "The user is waiting, I'll confirm the design later" | An unapproved design is a guess. You will build the wrong thing faster. |
 
-## Red flags — stop and fix the spec
+## Red flags — stop
 
-- You are editing source files and no delta spec exists for the behavior you are changing.
+- You are editing source files and no approved design document exists.
 - You are about to tick a checkbox you have not verified in this session.
-- A `MODIFIED` requirement does not restate the requirement in full.
-- A requirement header was renamed without a `RENAMED` operation.
-- A requirement exists that no task covers.
-- A `plan` task has no `Run:`/`Expected:` step, so nobody can tell when it is done.
+- A task has no `Expected:` or `Verify:` step, so nobody can tell when it is done.
 - You are writing the plan document before the design document it points at.
-- You are asking the user a question in prose that you could have asked with options.
+- You are editing a design document that was already approved.
 - You are explaining to yourself why this particular change is the exception.
+- You are asking the user a question in prose that you could have asked with options.
 
 ## Reference
 
 | File | Load it when |
 |---|---|
-| `references/artifacts.md` | `spec` format — the grammar, the four delta operations, the error list |
-| `references/plan-format.md` | `plan` format — the pair's shape, and what the validator checks |
-| `references/verification.md` | Step 8, or any time you are about to claim something works |
-| `references/harnesses.md` | You need to translate an action in this skill into the tool your environment actually provides |
-| `assets/templates/` | Starting any artifact — copy the template rather than inventing a shape |
-| `scripts/validate.mjs` | After steps 4, 6, and 9 — `node scripts/validate.mjs` |
+| `references/plan-format.md` | Writing or validating a document — the grammar and every check |
+| `references/verification.md` | Step 6, or any time you are about to claim something works |
+| `references/harnesses.md` | You need to translate an action here into the tool your environment actually provides |
+| `assets/templates/` | Starting either document — copy the template rather than inventing a shape |
+| `scripts/validate.mjs` | After step 4 and in step 7 — `node scripts/validate.mjs` |
 
-Layout this workflow owns. `config.yaml` records which of the two sets is in use; the other's
-directories are simply absent.
+Layout this workflow owns, and nothing else:
 
 ```
 docs/eagle-sdd/
-├── config.yaml                           # format: spec | plan
-│
-├── specs/<capability>/spec.md            # spec format — canonical truth, written only at Archive
-├── plans/
-│   ├── <change-id>/                      # spec format — one change in flight
-│   │   ├── proposal.md
-│   │   ├── design.md                     # only when step 5 applies
-│   │   ├── tasks.md
-│   │   └── specs/<capability>/spec.md    # deltas
-│   └── archive/<change-id>/              # spec format — merged changes, kept as the record
-│
-├── designs/<YYYY-MM-DD>-<slug>-design.md # plan format — the design, frozen at its date
-└── plans/<YYYY-MM-DD>-<slug>.md          # plan format — its implementation plan
+├── designs/<YYYY-MM-DD>-<slug>-design.md   # the design, frozen at its date
+└── plans/<YYYY-MM-DD>-<slug>.md            # its implementation plan
 ```
 
-Templates: `proposal.md`, `spec.md`, `design.md`, `tasks.md` for `spec`; `design-doc.md` and
-`implementation-plan.md` for `plan`.
+Templates: `design-doc.md` and `implementation-plan.md`.

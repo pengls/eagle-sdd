@@ -1,7 +1,7 @@
 {
   "name": "eagle-sdd",
-  "description": "Spec-driven development: write the spec first, implement against it, verify against it, then fold it into the canonical truth. Invoked by name only.",
-  "version": "1.0.0",
+  "description": "Spec-driven development: a dated design document, a task-by-task implementation plan, and evidence-gated verification. Invoked by name only.",
+  "version": "2.0.0",
   "author": {
     "name": "pengls"
   },
@@ -11,9 +11,8 @@
   "keywords": [
     "spec-driven-development",
     "sdd",
-    "specs",
-    "requirements",
-    "planning",
+    "design-document",
+    "implementation-plan",
     "verification",
     "skills"
   ]

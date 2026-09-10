@@ -1,14 +1,14 @@
 {
   "name": "eagle-sdd",
-  "description": "Spec-driven development for coding agents: canonical specs, change deltas, and evidence-gated verification.",
+  "description": "Spec-driven development for coding agents: a dated design document paired with a task-by-task implementation plan.",
   "owner": {
     "name": "pengls"
   },
   "plugins": [
     {
       "name": "eagle-sdd",
-      "description": "Write the spec first, implement against it, verify against it, then fold it into the canonical truth. Invoked by name only.",
-      "version": "1.0.0",
+      "description": "Write the design first, plan it task by task, implement against the plan, verify against the design. Invoked by name only.",
+      "version": "2.0.0",
       "source": "./",
       "author": {
         "name": "pengls"

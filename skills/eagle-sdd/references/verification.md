@@ -30,28 +30,34 @@ Five steps, in order. You may not skip one, and you may not compress them.
 | A partial run that was interrupted | An incomplete check has no verdict. |
 | "It worked on my machine before the last edit" | The last edit is exactly what is in question. |
 
-## Walk the requirements
+## Walk the design
 
-A passing suite is not a verified change. Walk the delta requirement by requirement and account for every one.
+A passing suite is not a verified change. Walk the design document section by section and account
+for every part of it.
 
 ```markdown
-## Verification report — <change-id>
+## Verification report — 2026-08-04-store-search-layout
 
-| Requirement | Evidence | Result | Fresh |
+| Part of the design | Evidence | Result | Fresh |
 |---|---|---|---|
-| Session timeout | `pnpm test session-expiry` | pass, 4 cases | yes |
-| Token refresh | `pnpm test auth-refresh` | pass, 7 cases | yes |
-| Indented audit log | — | **no evidence** | — |
+| §4.1 Card header buttons | manual check, admin page | pass | yes |
+| §4.2 Search row layout | `pnpm test store-layout` | pass, 4 cases | yes |
+| §4.3 Collapse behaviour | manual check, narrow viewport | pass | yes |
+| §1 Indented audit log | — | **no evidence** | — |
 
-Unverified: Indented audit log. No test or observation covers it. Reported to user.
+Unverified: §1's audit-log line. No test or observation covers it. Reported to user.
 ```
 
 Two habits make this table honest:
 
-- **`Fresh` is a separate column from `Result`.** A pass you did not produce in this session is not a pass. Marking it `no` is the point of the table.
-- **An unverified requirement stays visible.** Fill the gap or report it. Do not delete the row, and do not soften the wording. A requirement that cannot be verified is a finding about the spec, not an embarrassment to hide.
+- **`Fresh` is a separate column from `Result`.** A pass you did not produce in this session is
+  not a pass. Marking it `no` is the point of the table.
+- **An unverified part stays visible.** Fill the gap or report it. Do not delete the row, and do
+  not soften the wording.
 
-If a requirement has no possible check, that is a specification defect. Say so and go back to step 4 — a requirement that cannot be observed was never testable, and it should not have passed the earlier gate.
+If a part of the design has no possible check, that is a defect in the design document. Say so —
+something that cannot be observed was never testable, and it should not have passed the gate at
+step 3.
 
 ## When work was delegated
 
@@ -75,20 +81,21 @@ A change can pass correctness and fail spec compliance — that is the whole rea
 Do not cap rounds with a fixed number. A count is a proxy for a judgement you are capable of making directly. Stop and escalate to the user when you observe any of these, and say which one you observed:
 
 - The same finding returns after a fix that was supposed to address it.
-- Successive rounds produce different findings on the same requirement.
-- A finding cannot be resolved without changing the spec.
-- The change has grown past what the spec describes.
+- Successive rounds produce different findings on the same part of the design.
+- A finding cannot be resolved without changing the design document.
+- The change has grown past what the design describes.
 
 Report the impasse with its evidence and let the user decide. Parking a change with a recorded reason is a legitimate outcome. Looping is not.
 
 ## Before you say "done"
 
-- [ ] Every requirement in the delta has evidence produced in this session.
-- [ ] Every `Verify:` command in `tasks.md` has been run and its output read.
+- [ ] Every part of the design document has evidence produced in this session.
+- [ ] Every `Run:`/`Expected:` and `Verify:` step in the plan has been run and its output read.
 - [ ] Every checkbox that is ticked was ticked after reading its verification output.
+- [ ] `## 5. Out of scope` held — nothing outside it changed.
 - [ ] Delegated work was reviewed by an agent that did not write it.
 - [ ] Spec compliance and correctness are reported separately.
-- [ ] Unverified requirements are stated as gaps, in the report, in plain language.
+- [ ] Unverified parts are stated as gaps, in the report, in plain language.
 - [ ] `node scripts/validate.mjs` exits `0`.
 
 If any box is unticked, the change is not done. Say what is missing instead of reporting success.

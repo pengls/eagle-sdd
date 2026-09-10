@@ -1,7 +1,7 @@
 /**
  * Tests for the skill bundle itself.
  *
- *   node --test tests/
+ *   node --test
  *
  * These guard the properties that decide whether the skill loads at all:
  * frontmatter validity, the Agent Skills field budget, the invocation policy
@@ -68,7 +68,7 @@ test('description states triggering conditions, not the workflow', () => {
   // Superpowers measured this: a description that summarises the workflow
   // becomes a shortcut the agent follows INSTEAD of reading the body.
   const description = topLevel.description.toLowerCase();
-  for (const leak of ['then implement', 'create a proposal', 'write a spec,', 'first,', 'step 1']) {
+  for (const leak of ['then implement', 'write a design', 'create a plan', 'first,', 'step 1']) {
     assert.ok(
       !description.includes(leak),
       `description leaks workflow detail ("${leak}"); state when to use, not what it does`,
@@ -125,27 +125,44 @@ test('every file SKILL.md points at exists', () => {
   assert.deepEqual(missing, [], `SKILL.md references missing files: ${missing.join(', ')}`);
 });
 
-test('the templates exist for every artifact the workflow produces', () => {
-  // spec format
-  for (const name of ['proposal.md', 'spec.md', 'design.md', 'tasks.md']) {
-    const path = join(SKILL_DIR, 'assets', 'templates', name);
-    assert.ok(existsSync(path) && statSync(path).isFile(), `missing template ${name}`);
+test('the skill ships only the plan format', () => {
+  // The spec document set was removed deliberately; a leftover reference to it
+  // means a document the workflow no longer produces, or a rule it no longer has.
+  const removed = [
+    'references/artifacts.md',
+    'assets/templates/proposal.md',
+    'assets/templates/spec.md',
+    'assets/templates/design.md',
+    'assets/templates/tasks.md',
+  ];
+  for (const path of removed) {
+    assert.ok(!existsSync(join(SKILL_DIR, path)), `${path} should have been removed`);
   }
-  // plan format
-  for (const name of ['design-doc.md', 'implementation-plan.md']) {
-    const path = join(SKILL_DIR, 'assets', 'templates', name);
-    assert.ok(existsSync(path) && statSync(path).isFile(), `missing plan-format template ${name}`);
+  for (const token of ['config.yaml', 'canonical', 'delta', 'Covers:', 'Archive']) {
+    assert.ok(
+      !body.includes(token),
+      `SKILL.md still mentions "${token}", which belongs to the removed spec format`,
+    );
   }
 });
 
-test('both document formats are documented', () => {
-  const body = readFileSync(SKILL_MD, 'utf8');
-  for (const ref of ['references/artifacts.md', 'references/plan-format.md']) {
-    assert.ok(body.includes(ref), `SKILL.md does not point at ${ref}`);
+test('the templates exist for both documents the workflow produces', () => {
+  for (const name of ['design-doc.md', 'implementation-plan.md']) {
+    const path = join(SKILL_DIR, 'assets', 'templates', name);
+    assert.ok(existsSync(path) && statSync(path).isFile(), `missing template ${name}`);
   }
-  // The default matters: a reader who stops after the format table must know
-  // which one applies when nobody has chosen.
-  assert.match(body, /`spec`\s*[—-]\s*the default/, 'SKILL.md must mark spec as the default format');
+});
+
+test('the plan template carries every header line the validator checks', () => {
+  const template = readFileSync(
+    join(SKILL_DIR, 'assets', 'templates', 'implementation-plan.md'),
+    'utf8',
+  );
+  for (const line of ['**Goal:**', '**Architecture:**', '**Tech Stack:**', '**Spec:**']) {
+    assert.ok(template.includes(line), `implementation-plan.md is missing ${line}`);
+  }
+  assert.match(template, /^### Task \d/m, 'the plan template must show a Task heading shape');
+  assert.match(template, /Expected:/, 'the plan template must show a verification step');
 });
 
 test('the validator is present and executable as a plain script', () => {
@@ -162,33 +179,28 @@ test('the validator is present and executable as a plain script', () => {
 
 test('references document exactly the codes the validator emits', () => {
   const source = readFileSync(join(SKILL_DIR, 'scripts', 'validate.mjs'), 'utf8');
-  // Both formats' grammars live in their own reference file, so the documented
-  // set is the union of the two.
-  const doc = [
-    readFileSync(join(SKILL_DIR, 'references', 'artifacts.md'), 'utf8'),
-    readFileSync(join(SKILL_DIR, 'references', 'plan-format.md'), 'utf8'),
-  ].join('\n');
+  const doc = readFileSync(join(SKILL_DIR, 'references', 'plan-format.md'), 'utf8');
 
-  // Codes reach the reporter through two shapes — `errors.push({ code: 'D006' })`
-  // and the `err(where, 'D001', ...)` helper — so match any quoted code literal
+  // Codes reach the reporter through two shapes — `errors.push({ code: 'F121' })`
+  // and the `err(where, 'F105', ...)` helper — so match any quoted code literal
   // rather than the `code:` key, which only sees the first shape.
   const emitted = new Set([...source.matchAll(/'([A-Z]\d{3})'/g)].map((m) => m[1]));
-  assert.ok(emitted.size >= 40, `expected the full code set, found ${emitted.size}`);
+  assert.ok(emitted.size >= 12, `expected the full code set, found ${emitted.size}`);
 
   const undocumented = [...emitted].filter((c) => !doc.includes(c)).sort();
   assert.deepEqual(
     undocumented,
     [],
-    `validate.mjs emits codes not documented in the references: ${undocumented.join(', ')}`,
+    `validate.mjs emits codes not documented in references/plan-format.md: ${undocumented.join(', ')}`,
   );
 
   // The reverse direction: a documented code with no check behind it is a rule
-  // the references promise and the code does not enforce.
+  // the reference promises and the code does not enforce.
   const documented = new Set([...doc.matchAll(/\b([A-Z]\d{3})\b/g)].map((m) => m[1]));
   const unenforced = [...documented].filter((c) => !emitted.has(c)).sort();
   assert.deepEqual(
     unenforced,
     [],
-    `the references document codes the validator never emits: ${unenforced.join(', ')}`,
+    `references/plan-format.md documents codes the validator never emits: ${unenforced.join(', ')}`,
   );
 });

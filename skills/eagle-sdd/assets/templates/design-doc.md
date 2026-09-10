@@ -1,14 +1,16 @@
 # <Title> Design
 
 <!--
-The `plan` format's first document. It replaces both the proposal and the spec:
-there is no canonical spec and no delta in this format, so this dated file is the
-whole record of what was decided and why, frozen at the date in its filename.
+The first of the two documents a change produces. The second is its implementation plan, whose
+**Spec:** line points back here.
+
+This document is frozen at its date: nothing rewrites it. A decision that changes later becomes a
+new dated pair, so the record of what was believed on a given day survives.
 
 Filename: docs/eagle-sdd/designs/<YYYY-MM-DD>-<slug>-design.md
 
-Write the document in the language the user is working in. The English headings
-below ARE the format; translate them only if the project's other documents do.
+Write the document in the language the user is working in. The English headings below ARE the
+format; translate them only if the project's other documents do.
 -->
 
 Date: <YYYY-MM-DD>

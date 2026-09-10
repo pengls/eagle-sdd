@@ -1,8 +1,0 @@
-# Which document set the eagle-sdd skill produces for this repository.
-#
-#   spec - canonical specs under specs/, plus a delta per change under plans/<change-id>/
-#   plan - a dated design under designs/, paired with a dated plan under plans/
-#
-# The skill asks once, records the answer here, and does not ask again. Change
-# this line, or ask for the other format in a run, to switch.
-format: spec

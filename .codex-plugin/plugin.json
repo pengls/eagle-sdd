@@ -1,7 +1,7 @@
 {
   "name": "eagle-sdd",
-  "version": "1.0.0",
-  "description": "Spec-driven development for coding agents: canonical specs, change deltas, and evidence-gated verification.",
+  "version": "2.0.0",
+  "description": "Spec-driven development for coding agents: a dated design document paired with a task-by-task implementation plan.",
   "author": {
     "name": "pengls"
   },
@@ -11,8 +11,8 @@
   "keywords": [
     "spec-driven-development",
     "sdd",
-    "specs",
-    "planning",
+    "design-document",
+    "implementation-plan",
     "verification",
     "skills"
   ],
@@ -20,8 +20,8 @@
   "hooks": {},
   "interface": {
     "displayName": "Eagle SDD",
-    "shortDescription": "Spec-driven development: spec, then implement, then verify against the spec",
-    "longDescription": "Guides a change through orient, grill, propose, specify, design, plan, implement, verify, and archive. Canonical specs live under docs/eagle-sdd/specs with changes stored as deltas, and verification is evidence-gated per requirement rather than per test run.",
+    "shortDescription": "Design first, plan task by task, verify against the design",
+    "longDescription": "Guides a change through orient, grill, design document, plan document, implement, verify, and close. Each change produces a dated design document and a dated implementation plan under docs/eagle-sdd, frozen at their date, with a verification step and a commit per task.",
     "developerName": "pengls",
     "category": "Developer Tools",
     "capabilities": [
