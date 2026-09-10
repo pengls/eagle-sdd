@@ -1,0 +1,18 @@
+{
+  "name": "eagle-sdd",
+  "description": "Spec-driven development for coding agents: canonical specs, change deltas, and evidence-gated verification.",
+  "owner": {
+    "name": "pengls"
+  },
+  "plugins": [
+    {
+      "name": "eagle-sdd",
+      "description": "Write the spec first, implement against it, verify against it, then fold it into the canonical truth. Invoked by name only.",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "pengls"
+      }
+    }
+  ]
+}

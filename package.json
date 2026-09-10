@@ -8,8 +8,8 @@
   "scripts": {
     "test": "node --test",
     "validate": "node skills/eagle-sdd/scripts/validate.mjs",
-    "install:windows": "powershell -NoProfile -File scripts/install.ps1",
-    "install:posix": "sh scripts/install.sh"
+    "install:windows": "powershell -NoProfile -File install.ps1",
+    "install:posix": "sh install.sh"
   },
   "pi": {
     "skills": [

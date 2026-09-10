@@ -1,0 +1,33 @@
+{
+  "name": "eagle-sdd",
+  "version": "1.0.0",
+  "description": "Spec-driven development for coding agents: canonical specs, change deltas, and evidence-gated verification.",
+  "author": {
+    "name": "pengls"
+  },
+  "homepage": "https://github.com/pengls/eagle-sdd",
+  "repository": "https://github.com/pengls/eagle-sdd",
+  "license": "MIT",
+  "keywords": [
+    "spec-driven-development",
+    "sdd",
+    "specs",
+    "planning",
+    "verification",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "Eagle SDD",
+    "shortDescription": "Spec-driven development: spec, then implement, then verify against the spec",
+    "longDescription": "Guides a change through orient, grill, propose, specify, design, plan, implement, verify, and archive. Canonical specs live under docs/eagle-sdd/specs with changes stored as deltas, and verification is evidence-gated per requirement rather than per test run.",
+    "developerName": "pengls",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/pengls/eagle-sdd"
+  }
+}

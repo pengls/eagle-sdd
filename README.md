@@ -66,26 +66,82 @@ explicitly as things that do not count.
 
 ## Install
 
-```powershell
-# Windows
-powershell -File scripts/install.ps1                # project + user roots
-powershell -File scripts/install.ps1 -Scope user    # user roots only
-powershell -File scripts/install.ps1 -Copy          # copy instead of link
-```
+No clone required. One command fetches the skill and links it into the harness roots on your
+machine.
 
 ```sh
 # macOS / Linux
-sh scripts/install.sh
-sh scripts/install.sh user
-sh scripts/install.sh user copy
+curl -fsSL https://raw.githubusercontent.com/pengls/eagle-sdd/main/install.sh | sh
 ```
 
-Or through npm: `npm run install:windows` / `npm run install:posix`.
+```powershell
+# Windows
+irm https://raw.githubusercontent.com/pengls/eagle-sdd/main/install.ps1 | iex
+```
 
-Both scripts link the skill — directory junctions on Windows, which need neither administrator
-rights nor Developer Mode — so that editing this repository changes the installed skill. If
-linking is unavailable they copy, and tell you that copies will not track later edits.
-Re-running is safe: an existing correct link is left alone.
+It writes to `~/.agents/skills/` — read by Codex, Copilot CLI, Gemini CLI, and DeepSeek
+Harness — and to `~/.claude/skills/` for Claude Code. The downloaded skill is kept once at
+`~/.eagle-sdd/skill` and each root links to it, so updating is one command and nothing is
+duplicated. On Windows the links are directory junctions, which need neither administrator
+rights nor Developer Mode; if linking is unavailable the installer copies and says so.
+
+### Update, check, remove
+
+```sh
+sh install.sh              # or the curl one-liner again — this is how you update
+sh install.sh --check      # report whether an update is available; change nothing
+sh install.sh --uninstall  # remove every link and the download
+```
+
+Re-running is safe. Work that is already current is left untouched — "already up to date"
+rather than a rewrite — and `--check` exits `2` when an update is available so you can wire it
+into a script. `--uninstall` sweeps **every** documented root, including ones an earlier
+install wrote at a different scope, so it cannot leave a dangling link.
+
+### Options
+
+| Flag | Environment variable | Default |
+|---|---|---|
+| `--ref <git-ref>` | `EAGLE_SDD_REF` | `main` — a branch, tag, or commit |
+| `--scope <s>` | `EAGLE_SDD_SCOPE` | `user` remotely; `both` from a checkout |
+| `--harness <list>` | `EAGLE_SDD_HARNESS` | `agents,claude` |
+| `--install-root <dir>` | `EAGLE_SDD_HOME` | `~/.eagle-sdd` |
+| `--copy` | | link, not copy |
+| `--local <path>` | | link a checkout instead of downloading |
+
+`--harness` accepts any of `agents`, `claude`, `dsh`, `copilot`, `gemini`. The default covers
+the interoperable `~/.agents` root plus Claude Code; add the others if you want the redundant
+per-harness fallbacks.
+
+Because `--scope` defaults to `user` remotely but `both` from a checkout, piping the installer
+never writes into whichever directory you happened to run it from. Pin a release with
+`--ref v1.0.0`.
+
+Since a piped PowerShell script cannot take arguments, use this form to pass any:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/pengls/eagle-sdd/main/install.ps1))) -Scope both -Ref v1.0.0
+```
+
+### Native plugin installs
+
+If your harness has a plugin marketplace, that path works too and skips the script entirely:
+
+| Harness | Install |
+|---|---|
+| Claude Code | `/plugin marketplace add pengls/eagle-sdd` then `/plugin install eagle-sdd` |
+| Codex | the repo declares `skills/` in `.codex-plugin/plugin.json` |
+
+### Working on the skill itself
+
+Clone the repo and run the installer from inside it. It detects the checkout and links the
+roots to your working tree instead of downloading, so edits take effect immediately:
+
+```sh
+git clone https://github.com/pengls/eagle-sdd
+cd eagle-sdd
+sh install.sh --scope both     # or: powershell -File install.ps1 -Scope both
+```
 
 ## Use
 
@@ -119,6 +175,20 @@ docs/eagle-sdd/
     │   └── specs/<capability>/spec.md  # the deltas this change makes
     └── archive/<change-id>/            # merged changes, kept as the record
 ```
+
+Five document types, and only one of them is written by hand:
+
+| Document | Written | Holds |
+|---|---|---|
+| `proposal.md` | step 3 | Why, what changes, and the capabilities this change alters |
+| `specs/<cap>/spec.md` (delta) | step 4 | Only `ADDED` / `MODIFIED` / `REMOVED` / `RENAMED` requirements |
+| `design.md` | step 5, conditional | Decisions with alternatives; skipped unless the change warrants it |
+| `tasks.md` | step 6 | Checkbox tasks tagged `Covers:` / `Depends:` / `Verify:` |
+| `specs/<cap>/spec.md` (canonical) | step 9, Archive only | The accumulated truth for a capability |
+
+A change never edits the canonical specs. They are written only when a change is archived,
+which is what keeps the spec an accurate description of the system rather than a pile of
+overlapping proposals.
 
 A requirement is a header plus at least one scenario:
 
@@ -237,7 +307,9 @@ skills/eagle-sdd/
 ├── assets/templates/           proposal, spec, design, tasks
 ├── scripts/validate.mjs        zero-dependency structural validator
 └── agents/openai.yaml          Codex invocation policy
-scripts/                        installers for each harness's skill root
+install.sh / install.ps1        remote installer — download, link, update, uninstall
+.claude-plugin/                 Claude Code plugin + marketplace manifests
+.codex-plugin/                  Codex plugin manifest
 tests/                          45 Node tests
 docs/eagle-sdd/                 this project's own specs, written with the skill itself
 docs/research/                  primary-source notes behind the design

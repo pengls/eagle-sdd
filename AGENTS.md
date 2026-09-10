@@ -7,7 +7,10 @@ what it does and how it installs.
 
 - `skills/eagle-sdd/` — the skill. `SKILL.md` is the workflow spine; everything
   else is reference loaded on demand.
-- `scripts/` — installers that link the skill into each harness's skill root.
+- `install.sh` / `install.ps1` — the installer. Downloads the skill and links it into each
+  harness's skill root. Also runs in local mode, linking this checkout instead.
+- `.claude-plugin/`, `.codex-plugin/` — native plugin manifests so harnesses that have a
+  plugin marketplace can install without the script.
 - `tests/` — Node test suites. `node --test` runs both.
 - `docs/research/` — primary-source notes on OpenSpec, Superpowers, and MiMo Code's compose
   mode. These are the evidence behind the design; read them before changing a mechanic.

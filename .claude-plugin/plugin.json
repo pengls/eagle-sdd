@@ -1,0 +1,20 @@
+{
+  "name": "eagle-sdd",
+  "description": "Spec-driven development: write the spec first, implement against it, verify against it, then fold it into the canonical truth. Invoked by name only.",
+  "version": "1.0.0",
+  "author": {
+    "name": "pengls"
+  },
+  "homepage": "https://github.com/pengls/eagle-sdd",
+  "repository": "https://github.com/pengls/eagle-sdd",
+  "license": "MIT",
+  "keywords": [
+    "spec-driven-development",
+    "sdd",
+    "specs",
+    "requirements",
+    "planning",
+    "verification",
+    "skills"
+  ]
+}
