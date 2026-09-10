@@ -170,15 +170,42 @@ test('the validator is present and executable as a plain script', () => {
   assert.ok(existsSync(path), 'missing scripts/validate.mjs');
   const source = readFileSync(path, 'utf8');
   assert.match(source, /^#!\/usr\/bin\/env node/, 'validator should carry a node shebang');
+  // Zero third-party dependencies: only node: builtins and relative imports of
+  // this skill's own files. (The logic lives in scripts/lib/validate.mjs so that
+  // importing it has no side effects; the CLI runs unconditionally.)
   assert.doesNotMatch(
     source,
-    /^import .* from '(?!node:)/m,
-    'validator must stay zero-dependency: only node: builtins may be imported',
+    /^import .* from '(?!node:|\.)/m,
+    'the validator must stay zero-dependency: node: builtins and relative files only',
+  );
+  assert.ok(
+    existsSync(join(SKILL_DIR, 'scripts', 'lib', 'validate.mjs')),
+    'the importable library should live at scripts/lib/validate.mjs',
   );
 });
 
+test('the CLI carries no entry-point check', () => {
+  // Node resolves symlinks for import.meta.url but not for process.argv[1], so
+  // comparing them made the CLI run nothing through a junction and exit 0 — a
+  // silent false pass. The check is gone by design; this fails if it returns.
+  // Comments are stripped first: the file explains the removed check, and that
+  // explanation is the reason the next reader will not put it back.
+  const source = readFileSync(join(SKILL_DIR, 'scripts', 'validate.mjs'), 'utf8').replace(
+    /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
+    '',
+  );
+  for (const forbidden of ['isEntryPoint', 'import.meta', 'argv[1]']) {
+    assert.ok(
+      !source.includes(forbidden),
+      `scripts/validate.mjs uses "${forbidden}" in code; the CLI must run unconditionally`,
+    );
+  }
+});
+
 test('references document exactly the codes the validator emits', () => {
-  const source = readFileSync(join(SKILL_DIR, 'scripts', 'validate.mjs'), 'utf8');
+  // The codes live in the library; the CLI only owns the exit code and the
+  // reporting.
+  const source = readFileSync(join(SKILL_DIR, 'scripts', 'lib', 'validate.mjs'), 'utf8');
   const doc = readFileSync(join(SKILL_DIR, 'references', 'plan-format.md'), 'utf8');
 
   // Codes reach the reporter through two shapes — `errors.push({ code: 'F121' })`

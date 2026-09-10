@@ -9,11 +9,15 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { validate } from '../skills/eagle-sdd/scripts/validate.mjs';
+import { validate } from '../skills/eagle-sdd/scripts/lib/validate.mjs';
+
+const SKILL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills', 'eagle-sdd');
 
 // --------------------------------------------------------------- fixtures
 
@@ -339,4 +343,62 @@ test('the pair is joined on the slug, not on the Spec link', () => {
     return f;
   });
   assert.ok(!codesOf(result).includes('F130'), 'the design should not be an orphan');
+});
+
+// --------------------------------------------------------------- the CLI
+
+test('the CLI reports correctly when run through a symlinked install path', () => {
+  // The skill is normally installed as a junction into a harness's skill root.
+  // Node resolves symlinks when it sets import.meta.url, but leaves
+  // process.argv[1] exactly as the caller typed it — so the entry-point check
+  // this script used to carry compared unequal, ran nothing, and exited 0. On a
+  // broken tree that is a silent false pass, which is worse than any error it
+  // could have printed. This test fails if that check ever comes back.
+  const base = mkdtempSync(join(tmpdir(), 'sdd-cli-'));
+  const linked = join(base, 'linked-skill');
+  const root = join(base, 'docs', 'eagle-sdd');
+  const plansDir = join(root, 'plans');
+  const designsDir = join(root, 'designs');
+  const planFile = join(plansDir, '2026-08-04-store-search-layout.md');
+
+  try {
+    symlinkSync(SKILL_DIR, linked, process.platform === 'win32' ? 'junction' : 'dir');
+    mkdirSync(plansDir, { recursive: true });
+    mkdirSync(designsDir, { recursive: true });
+    writeFileSync(join(designsDir, '2026-08-04-store-search-layout-design.md'), DESIGN_DOC, 'utf8');
+    writeFileSync(planFile, PLAN_DOC, 'utf8');
+
+    // cwd is the fake repository root, so the documents' repository-relative
+    // **Spec:** path resolves the way it would in a real one.
+    const cli = join(linked, 'scripts', 'validate.mjs');
+    const invoke = () =>
+      spawnSync(process.execPath, [cli, join('docs', 'eagle-sdd')], {
+        cwd: base,
+        encoding: 'utf8',
+      });
+
+    const clean = invoke();
+    assert.notEqual(
+      clean.stdout.trim(),
+      '',
+      'the CLI printed nothing — it did not run at all, which is the silent false pass',
+    );
+    assert.match(clean.stdout, /OK/, 'a clean tree must report OK through the symlink');
+    assert.equal(clean.status, 0, 'a clean tree must exit 0');
+
+    // A broken tree must fail loudly, not quietly pass.
+    writeFileSync(planFile, '# no goal\n\n### Task 1: t\n\n- [ ] Step 1\n', 'utf8');
+    const broken = invoke();
+    assert.match(broken.stdout, /F10\d/, 'a broken tree must report codes through the symlink');
+    assert.equal(broken.status, 1, 'a broken tree must not exit 0 through the symlink');
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('the library has no side effects when imported', () => {
+  // Anything that runs on import would fire during this test file's own load.
+  // The counterpart — that the CLI *always* runs when executed — is covered by
+  // the symlink test above.
+  assert.equal(typeof validate, 'function');
 });
