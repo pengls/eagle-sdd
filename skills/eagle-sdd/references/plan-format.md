@@ -34,29 +34,12 @@ output — there is no index, no manifest, and no configuration file.
 
 The design document. It carries the why, the what, and the decisions, in one dated file.
 
-```markdown
-# Store search layout Design
+**Copy `assets/templates/design-doc.md`.** It is the shape: an `# H1` title, three metadata lines,
+then six numbered `##` sections — requirement summary, confirmed decisions, current state and
+problem, detailed design, out of scope, how to verify. Section 2 is a `Question | Decision` table
+whose rows each name the option the decision beat.
 
-Date: 2026-08-04
-Module: Store management page (`/biz/store`)
-Project: hl-assistant-admin
-
-## 1. Requirement summary
-...
-## 2. Confirmed decisions
-
-| Question | Decision |
-|---|---|
-| Layout direction | Option B: common filters on the first row plus a "more filters" collapse (beat a multi-row grid and a grouped panel) |
-
-## 3. Current state and problem
-## 4. Detailed design
-### 4.1 Card header
-## 5. Out of scope
-## 6. How to verify
-```
-
-**Required:** an `# H1` title, and at least three `##` sections. Section *names* are not checked —
+**Required:** the `# H1` title, and at least three `##` sections. Section *names* are not checked —
 the numbered list above is the convention, not the contract, and the headings may be translated.
 
 **Write it before the plan.** The plan document points at this one; there is no ordering in which
@@ -68,39 +51,8 @@ decided on a given day, and you give up a single current description of the syst
 
 ## plans/&lt;date&gt;-&lt;slug&gt;.md
 
-```markdown
-# Store search layout Implementation Plan
-
-> **For agentic workers:** implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** <what is true after this plan is executed>
-**Architecture:** <the shape of the change>
-**Tech Stack:** <what it touches>
-**Spec:** `docs/eagle-sdd/designs/2026-08-04-store-search-layout-design.md`
-
----
-
-## File structure
-
-| File | Change | Responsibility |
-|---|---|---|
-| `src/.../store.ftl` | Modify | Search bar layout, card header buttons |
-
----
-
-### Task 1: Add the search bar layout CSS
-
-**Files:**
-- Modify: `src/.../store.ftl`（the `<style>` block）
-
-- [ ] **Step 1: Append the CSS**
-- [ ] **Step 2: Verify**
-
-Run: `rg -n "search-actions" src/.../store.ftl`
-Expected: at least four matching lines, no error
-
-- [ ] **Step 3: Commit**
-```
+**Copy `assets/templates/implementation-plan.md`.** It is the shape: an `# H1` title, the four
+header lines below, a file-structure table, then `Task N` blocks.
 
 **The four header lines.** `**Goal:**` is required. `**Architecture:**` is expected and warned
 about when absent. `**Spec:**` is expected and warned about when absent, and when it *is* present

@@ -115,9 +115,7 @@ none of them can still change what you are about to build.
 
 Before you commit any detail to a document that freezes, state back what you understood and how
 you intend to solve it — in plain language — and get agreement. This is the cheapest place in the
-whole workflow to discover you have solved the wrong problem: cheaper than the design document,
-and far cheaper than the code. The design document is expensive to change once approved; a
-paragraph of prose in a chat message costs nothing.
+workflow to discover you have solved the wrong problem.
 
 **This step writes no file.** It is a message and a conversation. Nothing goes on disk until the
 user agrees with what you are about to put there.
@@ -126,28 +124,25 @@ The summary covers six things, in this order:
 
 1. **The problem, as you understood it** — one or two sentences, in the user's terms. If you
    cannot state it without hedging, the grill is not finished; go back to step 2.
-2. **The approach** — how you intend to solve it, in plain language. What changes, at the level
-   of "the store page gets a collapsible filter row", not "add `.search-actions` with
-   `margin-left: auto`".
-3. **The decisions** — each one with the option it beat. The user is checking your reasoning here,
-   not just your conclusion.
+2. **The approach** — how you intend to solve it, at the level of "the store page gets a
+   collapsible filter row", not "add `.search-actions` with `margin-left: auto`".
+3. **The decisions** — each one with the option it beat.
 4. **Out of scope** — what you are deliberately not doing, and what must not break.
 5. **Assumptions and open risks** — what you are unsure about, and what you are taking for granted.
-   An unstated assumption is the single most likely reason the design turns out wrong.
+   An unstated assumption is the most likely reason the design turns out wrong.
 6. **The question** — close by asking directly whether anything is wrong, missing, or needs
    clarifying.
 
-Rules that make this step worth its turn:
+Rules:
 
-- **No code, no file paths, no class names.** If it needs code to be understood, that belongs in
-  the design document. A summary that carries the detailed design turns step 4 into a rubber
-  stamp, which costs the workflow the gate that step exists for.
+- **No code, no file paths, no class names.** Those belong in the design document. A summary that
+  carries the detailed design turns step 4 into a rubber stamp.
 - **Short.** If it is longer than the original request, it is not a summary.
-- **It is a conversation, not an announcement.** Expect replies. Answer them. If a reply changes a
-  decision, revise the summary and present it again — do not patch the answer into the design
-  document later and hope the user notices.
-- **Keep going until the user confirms.** Agreement to one part is not agreement to the whole. And
-  do not proceed because the user went quiet: end your turn on the question and wait.
+- **It is a conversation, not an announcement.** Answer the replies. If one changes a decision,
+  revise the summary and present it again — do not patch the answer into the design document later
+  and hope the user notices.
+- **Keep going until the user confirms.** Agreement to one part is not agreement to the whole. Do
+  not proceed because the user went quiet: end your turn on the question and wait.
 - **A "just go ahead" is a ruling.** Record it, and carry it into the design document like any
   other.
 
@@ -162,19 +157,11 @@ during the exchange, the revised summary has been shown.
 Write `docs/eagle-sdd/designs/<date>-<slug>-design.md` from `assets/templates/design-doc.md`.
 Read `references/plan-format.md` for the grammar and the checks.
 
-Six sections, in order:
+Six sections, in order: requirement summary, confirmed decisions, current state and problem,
+detailed design, out of scope, how to verify. The template says what belongs in each.
 
-| Section | Holds |
-|---|---|
-| 1. Requirement summary | What is being asked, from the user's side, in two or three sentences |
-| 2. Confirmed decisions | Every decision from step 2, as `Question \| Decision`, including the option it beat |
-| 3. Current state and problem | What exists today, with real paths, and specifically what is wrong with it |
-| 4. Detailed design | The change itself, with code where code is more precise than prose |
-| 5. Out of scope | What this deliberately does not touch, and what it must not break |
-| 6. How to verify | How a human confirms the feature is actually right |
-
-Section 2 is the one that earns the document its keep. A decision recorded without the option it
-beat gets relitigated by the next reader; a decision recorded with it does not.
+Section 2 is the one that earns the document its keep: a decision recorded without the option it
+beat gets relitigated by the next reader.
 
 Write the document in the language the user is working in.
 
@@ -189,17 +176,15 @@ Write the document in the language the user is working in.
 Write `docs/eagle-sdd/plans/<date>-<slug>.md` from `assets/templates/implementation-plan.md`.
 Same date, same slug as the design it implements.
 
-Four header lines open it, and each does a job:
+Four header lines open it:
 
-- `**Goal:**` — what is true about the system after this plan runs that is not true now. A fresh
-  agent reads this before touching anything.
-- `**Architecture:**` — the shape of the change: which layers move, which pattern is used, and
-  what deliberately does not change.
+- `**Goal:**` — what is true about the system after this plan runs that is not true now.
+- `**Architecture:**` — the shape of the change: which layers move, and what deliberately does not.
 - `**Tech Stack:**` — only what this change actually touches.
-- `**Spec:**` — the path to its design document. This is the link back to the reasoning.
+- `**Spec:**` — the path to its design document.
 
 Then a file-structure table (every file created, modified, or deleted, and its role), then the
-tasks.
+tasks. `references/plan-format.md` says which of the four are enforced and which are warnings.
 
 **A task is one independently verifiable work item.** Every task has:
 
@@ -233,6 +218,11 @@ design document; and `node <skill-dir>/scripts/validate.mjs` reports no errors.
 ### 6. Implement
 
 Work the tasks in order, one at a time.
+
+**Read one task at a time, not the whole plan.** A plan runs long because every step carries its
+code; reading all of it to do task 1 holds all of it in context for the rest of the run, and
+invites starting task 4 while task 2 is unverified. Read the task you are about to do, do it, then
+read the next one when you get there.
 
 For each task:
 
