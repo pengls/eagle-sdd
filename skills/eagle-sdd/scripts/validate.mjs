@@ -4,9 +4,12 @@
  *
  *   node scripts/validate.mjs [root]
  *
- * `root` defaults to `docs/eagle-sdd`, resolved against the current working
- * directory, so run this from the repository root. Exits 1 on any error, 0
- * otherwise; warnings never change the exit code.
+ * With no argument the root comes from `eagle-sdd.yml`, found by searching
+ * upward from the current directory; without that file it falls back to
+ * `docs/eagle-sdd`. An explicit argument always wins, so the config can never
+ * make the validator impossible to point somewhere else.
+ *
+ * Exits 1 on any error, 0 otherwise; warnings never change the exit code.
  *
  * This file runs whenever it is executed. An earlier version kept the logic and
  * the CLI together and decided whether to run by comparing `import.meta.url`
@@ -21,17 +24,28 @@
  * this file has no condition left to get wrong.
  */
 
-import { validate, DEFAULT_ROOT } from './lib/validate.mjs';
+import { relative } from 'node:path';
+import { validate, resolveProject } from './lib/validate.mjs';
 
 function main(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log('Usage: node scripts/validate.mjs [root]');
-    console.log(`  root  defaults to "${DEFAULT_ROOT}", relative to the current directory`);
+    console.log('  root  overrides the `docs` setting in eagle-sdd.yml');
     return 0;
   }
 
-  const root = (argv.find((a) => !a.startsWith('-')) ?? DEFAULT_ROOT).replace(/[\\/]+$/, '');
-  const { errors, warnings } = validate(root);
+  const explicit = argv.find((a) => !a.startsWith('-'));
+  const project = resolveProject({ explicit });
+
+  // Config problems are reported alongside the document problems: a config the
+  // validator silently ignores is a config that gets edited forever with no
+  // effect, which is worse than being told it is wrong.
+  const { errors, warnings } = validate(project.root, { projectRoot: project.projectRoot });
+  errors.unshift(...project.errors);
+
+  const shown = project.configFile
+    ? relative(process.cwd(), project.configFile).split('\\').join('/')
+    : null;
 
   const group = (items) => {
     const byWhere = new Map();
@@ -55,11 +69,13 @@ function main(argv) {
   if (errors.length) {
     console.log(`\n--- ${errors.length} error(s) ---`);
     group(errors);
-    console.log(`\nFAIL  ${root}`);
+    console.log(`\nFAIL  ${project.root}`);
     return 1;
   }
 
-  console.log(`\nOK    ${root}${warnings.length ? ` (${warnings.length} warning(s))` : ''}`);
+  const suffix = warnings.length ? ` (${warnings.length} warning(s))` : '';
+  const from = shown && !explicit ? `  [${shown}]` : '';
+  console.log(`\nOK    ${project.root}${suffix}${from}`);
   return 0;
 }
 

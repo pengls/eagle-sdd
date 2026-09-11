@@ -1,0 +1,9 @@
+# eagle-sdd project configuration. Edit this file directly; nothing rewrites it.
+#
+# docs  where the design-and-plan pairs live, relative to this file.
+# git   true  - initialise a repository if the project has none, and commit
+#               after each finished task.
+#       false - leave version control entirely alone.
+
+docs: docs/eagle-sdd
+git: true

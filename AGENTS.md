@@ -15,6 +15,7 @@ it installs, and `docs/WORKFLOW.md` for the flow written for a human reader.
 - `docs/research/` — primary-source notes on Superpowers, MiMo Code's compose mode, and OpenSpec.
   These are the evidence behind the design; read them before changing a mechanic.
 - `docs/eagle-sdd/` — this repository's own design-and-plan pairs, written with the skill itself.
+- `eagle-sdd.yml` — this repository's own configuration.
 
 ## There is exactly one document format
 
@@ -22,12 +23,22 @@ Version 2 removed the `spec` set (canonical specs, deltas, proposals, archive). 
 one dated pair per change and nothing else:
 
 ```
-docs/eagle-sdd/designs/<YYYY-MM-DD>-<slug>-design.md
-docs/eagle-sdd/plans/<YYYY-MM-DD>-<slug>.md
+<project root>/
+├── eagle-sdd.yml                            # docs path, and whether git is touched
+└── <docs>/                                  # default: docs/eagle-sdd
+    ├── designs/<YYYY-MM-DD>-<slug>-design.md
+    └── plans/<YYYY-MM-DD>-<slug>.md
 ```
 
-Do not reintroduce a format choice, a config file, or a canonical tree. If a rule only makes sense
-for an accumulating spec, it belongs to a format this skill does not have.
+Do not reintroduce a format choice or a canonical tree. If a rule only makes sense for an
+accumulating spec, it belongs to a format this skill does not have.
+
+**`eagle-sdd.yml` is not a place for workflow toggles.** It carries exactly two project-local
+facts — where the documents live, and whether the workflow may touch git — because those are
+things only the project knows and only the project can answer. Adding a key that switches a
+behaviour the workflow should always have puts the workflow's design up for a vote it already
+had. The config lives at the project root, never inside `<docs>`, because it is what says where
+`<docs>` is.
 
 ## Rules for editing the skill
 
@@ -60,7 +71,8 @@ These are not style preferences. Each one is enforced by a test in `tests/skill.
 
 ```sh
 node --test
-node skills/eagle-sdd/scripts/validate.mjs docs/eagle-sdd
+node skills/eagle-sdd/scripts/validate.mjs
 ```
 
-Both must pass. A validator code that no test covers is a code nobody has seen fire.
+Both must pass. The validator reads `eagle-sdd.yml` for the documents path, so no argument is
+needed. A validator code that no test covers is a code nobody has seen fire.

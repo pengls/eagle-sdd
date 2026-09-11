@@ -4,8 +4,9 @@
 The `plan` format's second document. Task-by-task, with the exact code and the
 exact command that proves each step landed.
 
-Filename: docs/eagle-sdd/plans/<YYYY-MM-DD>-<slug>.md
-The date and slug must match the design document this points at.
+Filename: <docs>/plans/<YYYY-MM-DD>-<slug>.md
+where <docs> is the `docs` setting in the project's eagle-sdd.yml, default
+`docs/eagle-sdd`. The date and slug must match the design document this points at.
 -->
 
 > **For agentic workers:** implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking. Work the tasks in order; do not start a task before the one it depends on is verified.
@@ -16,7 +17,7 @@ The date and slug must match the design document this points at.
 
 **Tech Stack:** <Languages, frameworks, and libraries this change actually touches.>
 
-**Spec:** `docs/eagle-sdd/designs/<YYYY-MM-DD>-<slug>-design.md`
+**Spec:** `<docs>/designs/<YYYY-MM-DD>-<slug>-design.md`
 
 ---
 

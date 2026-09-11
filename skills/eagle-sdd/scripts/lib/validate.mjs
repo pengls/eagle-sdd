@@ -13,7 +13,7 @@
  */
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, relative, sep, resolve } from 'node:path';
+import { join, relative, sep, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_ROOT = 'docs/eagle-sdd';
@@ -47,23 +47,144 @@ const markdownIn = (path) => {
 
 const rel = (root, p) => relative(root, p).split(sep).join('/');
 
+// ------------------------------------------------------------ project config
+
+const CONFIG_FILE = 'eagle-sdd.yml';
+
 /**
- * Resolve a `**Spec:**` reference. Documents carry a repository-relative path,
- * but the validator may be pointed at a tree anywhere, so try the plausible
- * bases rather than assuming one.
+ * A deliberately small YAML reader: top-level `key: value` pairs, `#` comments.
+ * The config holds two scalar keys, so a dependency-free parser that cannot get
+ * more complicated than the file it reads beats pulling in a YAML library.
  */
-function resolveSpecRef(root, ref) {
+function parseConfig(text) {
+  const data = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw
+      .replace(/^\s*#.*$/, '') // a whole-line comment
+      .replace(/\s+#.*$/, '') // a trailing comment
+      .trim();
+    if (!line) continue;
+    const kv = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/.exec(line);
+    if (!kv) continue;
+    let value = kv[2].trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"') && value.length > 1) ||
+      (value.startsWith("'") && value.endsWith("'") && value.length > 1)
+    ) {
+      value = value.slice(1, -1);
+    }
+    data[kv[1]] = value;
+  }
+  return data;
+}
+
+/** The boolean grammar DSH itself accepts, so the two never disagree. */
+const asBoolean = (value) => {
+  if (typeof value !== 'string') return null;
+  if (/^(true|yes|on|1)$/i.test(value)) return true;
+  if (/^(false|no|off|0)$/i.test(value)) return false;
+  return null;
+};
+
+/**
+ * Find `eagle-sdd.yml` at or above `startDir` and turn it into the settings the
+ * workflow runs with.
+ *
+ * The config lives at the project root rather than inside the documents
+ * directory, because it is what says where that directory is — a file cannot
+ * declare its own location.
+ *
+ * Returns `{ root, configFile, projectRoot, git, errors }`. With no config the
+ * defaults apply and `configFile` is null, which is the state a project is in
+ * before its first run.
+ */
+function resolveProject({ cwd = process.cwd(), explicit } = {}) {
+  let dir = resolve(cwd);
+  let found = null;
+  for (;;) {
+    const candidate = join(dir, CONFIG_FILE);
+    if (existsSync(candidate)) {
+      found = { file: candidate, dir };
+      break;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  const errors = [];
+  const projectRoot = found ? found.dir : resolve(cwd);
+  let docs = DEFAULT_ROOT;
+  let git = true;
+
+  if (found) {
+    const data = parseConfig(readIfFile(found.file) ?? '');
+    const here = relative(projectRoot, found.file).split(sep).join('/');
+
+    if (data.docs !== undefined) {
+      if (!data.docs) {
+        errors.push({ where: here, code: 'F001', msg: '`docs` is empty; give a path or remove the key' });
+      } else {
+        docs = data.docs;
+      }
+    }
+    if (data.git !== undefined) {
+      const parsed = asBoolean(data.git);
+      if (parsed === null) {
+        errors.push({
+          where: here,
+          code: 'F001',
+          msg: `\`git\` must be true or false, got "${data.git}"`,
+        });
+      } else {
+        git = parsed;
+      }
+    }
+  }
+
+  // An explicit argument still wins, so the config never makes the validator
+  // impossible to point somewhere else.
+  const root = explicit ? explicit : resolve(projectRoot, docs);
+
+  return {
+    root,
+    configFile: found ? found.file : null,
+    projectRoot,
+    git,
+    errors,
+  };
+}
+
+/**
+ * Resolve a `**Spec:**` reference. Documents carry a project-relative path, but
+ * the validator may be pointed at a tree anywhere, so try every plausible base
+ * rather than assuming one.
+ */
+function resolveSpecRef(root, ref, projectRoot) {
   const cleaned = ref.replace(/`/g, '').trim();
   if (!cleaned) return null;
-  const candidates = [
-    resolve(process.cwd(), cleaned),
-    resolve(root, '..', '..', cleaned),
-    resolve(root, '..', cleaned),
-    resolve(root, cleaned),
+  const bases = [
+    process.cwd(),
+    ...(projectRoot ? [projectRoot] : []),
+    resolve(root, '..', '..'),
+    resolve(root, '..'),
+    root,
   ];
-  for (const candidate of candidates) {
+  for (const base of bases) {
+    const candidate = resolve(base, cleaned);
     if (existsSync(candidate)) return candidate;
   }
+
+  // Last resort: the design of that name, in this tree's designs directory.
+  //
+  // A project can move its documents directory — that is now a one-line config
+  // change — and every plan written before the move still carries the old path.
+  // Those pairs are still correct: the slug is the identity, and the link is a
+  // courtesy. Accepting the design that is actually sitting next to the plan
+  // keeps a moved directory from turning every historical pair into an error.
+  const byName = join(root, 'designs', basename(cleaned));
+  if (existsSync(byName)) return byName;
+
   return null;
 }
 
@@ -106,7 +227,7 @@ function splitTasks(text) {
 
 // --------------------------------------------------------------- the check
 
-function validate(root) {
+function validate(root, { projectRoot } = {}) {
   const errors = [];
   const warnings = [];
   const err = (where, code, msg) => errors.push({ where, code, msg });
@@ -171,7 +292,7 @@ function validate(root) {
     const specLine = /\*\*Spec:\*\*\s*(.+)/.exec(text);
     if (!specLine) {
       warn(here, 'F107', 'Plan document is missing **Spec:**, the link back to its design');
-    } else if (!resolveSpecRef(root, specLine[1])) {
+    } else if (!resolveSpecRef(root, specLine[1], projectRoot)) {
       err(here, 'F108', `**Spec:** does not resolve to an existing file: ${specLine[1].trim()}`);
     }
     pairedSlugs.add(name.replace(/\.md$/i, '').toLowerCase());
@@ -209,4 +330,4 @@ function validate(root) {
   return { errors, warnings };
 }
 
-export { validate, DEFAULT_ROOT };
+export { validate, resolveProject, CONFIG_FILE, DEFAULT_ROOT };

@@ -7,8 +7,8 @@ done.
 
 The alignment summary presented in step 3 is *not* one of these documents. It is a message and a
 conversation, it is never written to disk, and once the design document exists it is redundant by
-definition — which is exactly why it is not a file. Nothing under `docs/eagle-sdd/` other than the
-pair below should ever exist.
+definition — which is exactly why it is not a file. Nothing under `<docs>/` other than the pair
+below should ever exist.
 
 ## Contents
 
@@ -21,14 +21,50 @@ pair below should ever exist.
 ## Layout
 
 ```
-docs/eagle-sdd/
-├── designs/<YYYY-MM-DD>-<slug>-design.md    # one per change, frozen at its date
-└── plans/<YYYY-MM-DD>-<slug>.md             # the implementation plan for that design
+<project root>/
+├── eagle-sdd.yml                            # project configuration
+└── <docs>/                                  # default: docs/eagle-sdd
+    ├── designs/<YYYY-MM-DD>-<slug>-design.md    # one per change, frozen at its date
+    └── plans/<YYYY-MM-DD>-<slug>.md             # the implementation plan for that design
 ```
 
 Both directories are flat. The filename carries the date and the slug, so a change is identified
 by `2026-08-04-store-search-layout` rather than by a directory. Those two files are the entire
-output — there is no index, no manifest, and no configuration file.
+output — there is no index and no manifest.
+
+## eagle-sdd.yml
+
+The project configuration. It sits at the project root, **never inside `<docs>`**, because it is
+what says where `<docs>` is — a file cannot declare its own location.
+
+```yaml
+# eagle-sdd project configuration. Edit this file directly; nothing rewrites it.
+#
+# docs  where the design-and-plan pairs live, relative to this file.
+# git   true  - initialise a repository if the project has none, and commit
+#               after each finished task.
+#       false - leave version control entirely alone.
+
+docs: docs/eagle-sdd
+git: true
+```
+
+| Key | Default when absent | Means |
+|---|---|---|
+| `docs` | `docs/eagle-sdd` | Where the pairs live, relative to the file |
+| `git` | `true` | Whether the workflow may initialise a repository and commit |
+
+**Written once, on the project's first run.** The workflow looks for the file, and if it is not
+there asks for both settings as structured questions and writes it. Every later run reads it and
+does not ask. To change either setting, edit the file — nothing else writes to it.
+
+**`git: false`** means the workflow never runs a git command: no `git init`, and no commit step in
+any task. The plan simply carries one fewer step per task.
+
+**Moving `<docs>` is a one-line change.** Plans written before the move still point at the old
+path in their `**Spec:**` line; the validator accepts a link that names the design sitting next to
+the plan, so a move does not turn historical pairs into errors. The slug is the pair's identity and
+the link is a courtesy — which is why one may be forgiven and the other may not.
 
 ## designs/&lt;date&gt;-&lt;slug&gt;-design.md
 
@@ -92,14 +128,22 @@ Two consequences worth knowing:
 
 ## Checks
 
-`node scripts/validate.mjs [root]` defaults to `docs/eagle-sdd`. Zero dependencies, Node 18+.
-It exits `1` on any error; warnings never change the exit code.
+`node scripts/validate.mjs [root]` takes the documents path from `eagle-sdd.yml`, found by
+searching upward from the working directory, and falls back to `docs/eagle-sdd` when there is no
+config. An explicit `root` overrides both. Zero dependencies, Node 18+. It exits `1` on any error;
+warnings never change the exit code.
 
 **The tree**
 
 | Code | Kind | Condition |
 |---|---|---|
 | `F000` | error | No document tree at the given root, or no documents inside it |
+
+**Configuration**
+
+| Code | Kind | Condition |
+|---|---|---|
+| `F001` | error | `eagle-sdd.yml` has an empty `docs`, or a `git` that is not a boolean |
 
 **Design documents**
 

@@ -52,10 +52,44 @@ until its condition holds, and do not begin a step before the one it depends on 
 
 ### 1. Orient
 
-Read `docs/eagle-sdd/designs/` and `docs/eagle-sdd/plans/`. You are looking for a prior pair
-covering the same ground — a decision already made, an approach already rejected, a file
-already touched. Re-deciding something the repository already settled is the most common way
-this workflow wastes the user's time.
+**Resolve the project configuration first.** Look for `eagle-sdd.yml` at the project root — the
+nearest ancestor of the working directory that contains it, or the working directory itself.
+
+**If it exists, read it and use it. Do not ask again.** It is the source of truth for the whole
+run, including settings the user may have edited since last time.
+
+**If it does not exist, this is the project's first run.** Ask two structured questions, then
+write the file:
+
+1. **Where should the documents live?** Recommend `docs/eagle-sdd`. The answer is stored relative
+   to the project root, so the directory can be moved later by editing one line.
+2. **May the workflow touch git?** Recommend yes. Yes means it initialises a repository when the
+   project has none and commits after each finished task. No means it never runs a git command,
+   and the plan carries no commit steps.
+
+```yaml
+# eagle-sdd project configuration. Edit this file directly; nothing rewrites it.
+#
+# docs  where the design-and-plan pairs live, relative to this file.
+# git   true  - initialise a repository if the project has none, and commit
+#               after each finished task.
+#       false - leave version control entirely alone.
+
+docs: docs/eagle-sdd
+git: true
+```
+
+Write it at the project root, not inside the documents directory — the file is what says where
+that directory is, so it cannot live inside it. Tell the user the path you wrote, so they know the
+file exists and that later changes are theirs to make by editing it.
+
+For the rest of this document, **`<docs>` means the configured documents directory**, default
+`docs/eagle-sdd`.
+
+Then read `<docs>/designs/` and `<docs>/plans/`. You are looking for a prior pair covering the same
+ground — a decision already made, an approach already rejected, a file already touched.
+Re-deciding something the repository already settled is the most common way this workflow wastes
+the user's time.
 
 Then name the change:
 
@@ -67,8 +101,8 @@ Then name the change:
 It becomes exactly two files:
 
 ```
-docs/eagle-sdd/designs/<date>-<slug>-design.md
-docs/eagle-sdd/plans/<date>-<slug>.md
+<docs>/designs/<date>-<slug>-design.md
+<docs>/plans/<date>-<slug>.md
 ```
 
 The date and slug must match in both. The validator pairs them on it; nothing else joins them.
@@ -76,8 +110,8 @@ The date and slug must match in both. The validator pairs them on it; nothing el
 If a pair with that identity already exists, pick a different slug — never overwrite a frozen
 document. A change of mind is a new pair with a new date.
 
-**Done when** you can state in one sentence each: what the existing documents already cover,
-what this change alters, and the change's identity.
+**Done when** the configuration is resolved and you can state in one sentence each: what the
+existing documents already cover, what this change alters, and the change's identity.
 
 ### 2. Grill
 
@@ -154,7 +188,7 @@ during the exchange, the revised summary has been shown.
 
 ### 4. Design document
 
-Write `docs/eagle-sdd/designs/<date>-<slug>-design.md` from `assets/templates/design-doc.md`.
+Write `<docs>/designs/<date>-<slug>-design.md` from `assets/templates/design-doc.md`.
 Read `references/plan-format.md` for the grammar and the checks.
 
 Six sections, in order: requirement summary, confirmed decisions, current state and problem,
@@ -173,7 +207,7 @@ Write the document in the language the user is working in.
 
 ### 5. Plan document
 
-Write `docs/eagle-sdd/plans/<date>-<slug>.md` from `assets/templates/implementation-plan.md`.
+Write `<docs>/plans/<date>-<slug>.md` from `assets/templates/implementation-plan.md`.
 Same date, same slug as the design it implements.
 
 Four header lines open it:
@@ -195,6 +229,7 @@ tasks. `references/plan-format.md` says which of the four are enforced and which
    outcome; or `Verify:` with the observation when there is no command to run.
 5. **A commit step** — `git add` the files, `git commit`. The commit is what makes a task cheap
    to undo, and the git history becomes the execution record the design document cannot hold.
+   **Omit this step from every task when the configuration says `git: false`.**
 
 Rules that make a plan executable by someone who was not in the conversation — which is the
 normal case, and often a fresh agent with no memory of it:
@@ -212,8 +247,8 @@ normal case, and often a fresh agent with no memory of it:
 > **GATE — the user sees the task list before implementation starts.** Present the task titles
 > and the file-structure table, and stop.
 
-**Done when** every task has its steps, its verification, and its commit; the plan names its
-design document; and `node <skill-dir>/scripts/validate.mjs` reports no errors.
+**Done when** every task has its steps, its verification, and — when git is enabled — its commit;
+the plan names its design document; and `node <skill-dir>/scripts/validate.mjs` reports no errors.
 
 ### 6. Implement
 
@@ -230,7 +265,7 @@ For each task:
 2. Run the verification step.
 3. **Read the output**, including the exit code.
 4. Only then tick the boxes.
-5. Commit, with the message the plan gives.
+5. Commit, with the message the plan gives — when the configuration enables git.
 
 Tick a box **after** you have read the verification output, never before. A tick is a claim, and
 rule 3 applies to it.
@@ -247,7 +282,7 @@ run the check — report the block with what you tried, and stop. Do not silence
 the verification, and do not tick a box you could not check.
 
 **Done when** every box is ticked, every verification step has been run and read in this session,
-and every task is committed.
+and every task the plan marked for commit is committed.
 
 ### 7. Verify
 
@@ -278,7 +313,8 @@ reported to the user as a gap rather than smoothed over.
 
 There is no merge and no archive step. The pair was frozen at its date when it was written.
 
-1. Re-read the plan document. Confirm every box is ticked and every task is committed.
+1. Re-read the plan document. Confirm every box is ticked, and that every task carrying a commit
+   step has been committed.
 2. Confirm the plan's `**Spec:**` line still resolves to its design document.
 3. Run `node <skill-dir>/scripts/validate.mjs` and confirm it is clean.
 4. Report to the user: the change's identity, the two file paths, and anything in step 7 that
@@ -342,9 +378,14 @@ These are the thoughts that precede a broken change. Each one is a signal, not a
 Layout this workflow owns, and nothing else:
 
 ```
-docs/eagle-sdd/
-├── designs/<YYYY-MM-DD>-<slug>-design.md   # the design, frozen at its date
-└── plans/<YYYY-MM-DD>-<slug>.md            # its implementation plan
+<project root>/
+├── eagle-sdd.yml                            # docs path, and whether git is touched
+└── <docs>/                                  # default: docs/eagle-sdd
+    ├── designs/<YYYY-MM-DD>-<slug>-design.md   # the design, frozen at its date
+    └── plans/<YYYY-MM-DD>-<slug>.md            # its implementation plan
 ```
+
+The configuration file sits at the project root, never inside `<docs>` — it is what says where
+`<docs>` is.
 
 Templates: `design-doc.md` and `implementation-plan.md`.

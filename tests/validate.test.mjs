@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { validate } from '../skills/eagle-sdd/scripts/lib/validate.mjs';
+import { validate, resolveProject } from '../skills/eagle-sdd/scripts/lib/validate.mjs';
 
 const SKILL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills', 'eagle-sdd');
 
@@ -401,4 +401,139 @@ test('the library has no side effects when imported', () => {
   // The counterpart — that the CLI *always* runs when executed — is covered by
   // the symlink test above.
   assert.equal(typeof validate, 'function');
+});
+
+// ---------------------------------------------------------------- config
+
+/** Build a project directory, optionally with an eagle-sdd.yml, and resolve it. */
+function project(configText, { cwd } = {}) {
+  const base = mkdtempSync(join(tmpdir(), 'sdd-cfg-'));
+  mkdirSync(join(base, 'docs', 'eagle-sdd', 'plans'), { recursive: true });
+  mkdirSync(join(base, 'docs', 'eagle-sdd', 'designs'), { recursive: true });
+  if (configText !== null) writeFileSync(join(base, 'eagle-sdd.yml'), configText, 'utf8');
+  if (cwd) mkdirSync(join(base, cwd), { recursive: true });
+  return {
+    base,
+    resolved: resolveProject({ cwd: cwd ? join(base, cwd) : base }),
+    cleanup: () => rmSync(base, { recursive: true, force: true }),
+  };
+}
+
+test('with no config, the documented defaults apply', () => {
+  const p = project(null);
+  try {
+    assert.equal(p.resolved.root, join(p.base, 'docs', 'eagle-sdd'));
+    assert.equal(p.resolved.git, true);
+    assert.equal(p.resolved.configFile, null);
+    assert.deepEqual(p.resolved.errors, []);
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('a config sets the docs path and the git setting', () => {
+  const p = project('docs: spec/eagle\ngit: false\n');
+  try {
+    assert.equal(p.resolved.root, join(p.base, 'spec', 'eagle'));
+    assert.equal(p.resolved.git, false);
+    assert.equal(p.resolved.configFile, join(p.base, 'eagle-sdd.yml'));
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('the docs path is relative to the config, not to the working directory', () => {
+  const p = project('docs: spec/eagle\n', { cwd: join('src', 'deep') });
+  try {
+    assert.equal(p.resolved.root, join(p.base, 'spec', 'eagle'));
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('the config is found by searching upward from the working directory', () => {
+  const p = project('docs: spec/eagle\n', { cwd: join('src', 'deep') });
+  try {
+    assert.equal(p.resolved.projectRoot, p.base);
+    assert.equal(p.resolved.configFile, join(p.base, 'eagle-sdd.yml'));
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('an explicit root overrides the config', () => {
+  const p = project('docs: spec/eagle\n');
+  try {
+    const forced = resolveProject({ cwd: p.base, explicit: 'somewhere/else' });
+    assert.equal(forced.root, 'somewhere/else');
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('comments and quoting do not confuse the config reader', () => {
+  const p = project(
+    '# a leading comment\ndocs: "spec/eagle"   # a trailing comment\n\ngit: yes\n',
+  );
+  try {
+    assert.equal(p.resolved.root, join(p.base, 'spec', 'eagle'));
+    assert.equal(p.resolved.git, true);
+    assert.deepEqual(p.resolved.errors, []);
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('F001 — git must be a boolean', () => {
+  const p = project('docs: docs/eagle-sdd\ngit: maybe\n');
+  try {
+    assert.equal(p.resolved.errors.length, 1);
+    assert.equal(p.resolved.errors[0].code, 'F001');
+    assert.match(p.resolved.errors[0].msg, /git/);
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('F001 — an empty docs value is rejected', () => {
+  const p = project('docs:\ngit: true\n');
+  try {
+    assert.equal(p.resolved.errors.length, 1);
+    assert.equal(p.resolved.errors[0].code, 'F001');
+    assert.match(p.resolved.errors[0].msg, /docs/);
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('a plan whose Spec link names the old docs path still validates', () => {
+  // Moving the documents directory is now a one-line config change, and every
+  // plan written before the move carries the old path. The slug is the pair's
+  // identity, so the pair must not become an error over a stale courtesy link.
+  const base = mkdtempSync(join(tmpdir(), 'sdd-moved-'));
+  try {
+    const root = join(base, 'spec', 'eagle');
+    mkdirSync(join(root, 'designs'), { recursive: true });
+    mkdirSync(join(root, 'plans'), { recursive: true });
+    writeFileSync(join(base, 'eagle-sdd.yml'), 'docs: spec/eagle\n', 'utf8');
+    // Same filenames as before the move — that is the whole point: the
+    // directory moved, the files did not.
+    writeFileSync(
+      join(root, 'designs', '2026-08-04-store-search-layout-design.md'),
+      DESIGN_DOC,
+      'utf8',
+    );
+    writeFileSync(join(root, 'plans', '2026-08-04-store-search-layout.md'), PLAN_DOC, 'utf8');
+
+    // PLAN_DOC's **Spec:** still says docs/eagle-sdd/designs/...
+    const project = resolveProject({ cwd: base });
+    const result = validate(project.root, { projectRoot: project.projectRoot });
+    assert.deepEqual(
+      result.errors.map((e) => e.code),
+      [],
+      `expected no errors, got ${result.errors.map((e) => `${e.code} ${e.msg}`).join('; ')}`,
+    );
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
 });

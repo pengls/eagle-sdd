@@ -18,6 +18,7 @@ Neither is ever rewritten. That is the whole design.
 ## Contents
 
 - [Before anything: the scope check](#before-anything-the-scope-check)
+- [Project configuration](#project-configuration)
 - [Step 1 — Orient](#step-1--orient)
 - [Step 2 — Grill](#step-2--grill)
 - [Step 3 — Summarize](#step-3--summarize)
@@ -56,9 +57,45 @@ and skipping verification because the change is small. Once it has opened the wo
 
 ---
 
+## Project configuration
+
+The first time the workflow runs in a project it asks two questions, writes the answers to
+`eagle-sdd.yml` at the project root, and never asks again.
+
+| Question | Recommended | What the answer does |
+|---|---|---|
+| Where should the documents live? | `docs/eagle-sdd` | Sets where the design-and-plan pairs go, relative to the file |
+| May the workflow touch git? | yes | Yes: it runs `git init` when the project has none, and each task commits. No: it never runs a git command, and no task carries a commit step |
+
+```yaml
+# eagle-sdd project configuration. Edit this file directly; nothing rewrites it.
+docs: docs/eagle-sdd
+git: true
+```
+
+Three things worth knowing about it:
+
+- **Every later run reads it and stays quiet.** The file is the source of truth for the whole run,
+  including settings you edited since last time.
+- **To change a setting, edit the file.** Nothing else writes to it. Moving the documents
+  directory is a one-line change, and plans written before the move keep working: their
+  `**Spec:**` line names the old path, and the validator still recognises the pair, because the
+  pair's identity is the date-and-slug in the filename. The link is a courtesy; the slug is the
+  identity.
+- **It lives at the project root, never inside the documents directory.** It is what says where
+  that directory is — a file cannot declare its own location.
+
+If the project deliberately keeps its work out of version control, answer no to the second
+question and the workflow will not mention git again.
+
+---
+
 ## Step 1 — Orient
 
-**What it reads:** `docs/eagle-sdd/designs/` and `docs/eagle-sdd/plans/`.
+**What it resolves:** the project configuration above, if this is the first run.
+
+**What it reads:** `<docs>/designs/` and `<docs>/plans/`, where `<docs>` is the configured
+directory.
 
 **What it is looking for:** a prior pair covering the same ground — a decision already made, an
 approach already rejected, a file already touched. Re-deciding something the repository already
@@ -520,13 +557,14 @@ rewrite.
 ## The validator
 
 ```sh
-node skills/eagle-sdd/scripts/validate.mjs [root]     # root defaults to docs/eagle-sdd
+node skills/eagle-sdd/scripts/validate.mjs [root]     # root from eagle-sdd.yml, or explicit
 ```
 
-Zero dependencies, Node 18+. It checks whichever of the two documents exist and exits `1` on any
-error; warnings never change the exit code. The full code list is in
+Zero dependencies, Node 18+. It finds `eagle-sdd.yml` by searching upward from the working
+directory, so it needs no argument in a configured project; an explicit argument overrides it. It
+exits `1` on any error and warnings never change the exit code. The full code list is in
 [`references/plan-format.md`](../skills/eagle-sdd/references/plan-format.md#checks).
 
-Run it after step 5 and again in step 8. It is a structural check, not a substitute for step 6 —
+Run it after step 5 and again in step 8. It is a structural check, not a substitute for step 7 —
 it can tell you a task has no verification step, and it cannot tell you whether the feature is
 right.

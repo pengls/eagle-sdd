@@ -7,7 +7,9 @@ The first of the two documents a change produces. The second is its implementati
 This document is frozen at its date: nothing rewrites it. A decision that changes later becomes a
 new dated pair, so the record of what was believed on a given day survives.
 
-Filename: docs/eagle-sdd/designs/<YYYY-MM-DD>-<slug>-design.md
+Filename: <docs>/designs/<YYYY-MM-DD>-<slug>-design.md
+where <docs> is the `docs` setting in the project's eagle-sdd.yml, default
+`docs/eagle-sdd`.
 
 Write the document in the language the user is working in. The English headings below ARE the
 format; translate them only if the project's other documents do.

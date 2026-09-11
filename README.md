@@ -9,9 +9,11 @@ One skill. Two documents per change. No runtime dependency. The rules it states 
 a zero-dependency validator, not by asking the model nicely.
 
 ```
-docs/eagle-sdd/
-├── designs/2026-08-04-store-search-layout-design.md   what was decided, and why
-└── plans/2026-08-04-store-search-layout.md            what was done, task by task
+<project root>/
+├── eagle-sdd.yml                            # written once, on the first run
+└── docs/eagle-sdd/                          # or wherever you point it
+    ├── designs/2026-08-04-store-search-layout-design.md   what was decided, and why
+    └── plans/2026-08-04-store-search-layout.md            what was done, task by task
 ```
 
 ---
@@ -21,6 +23,7 @@ docs/eagle-sdd/
 - [Why this exists](#why-this-exists)
 - [Install](#install)
 - [Use](#use)
+- [Project configuration](#project-configuration)
 - [What it produces](#what-it-produces)
 - [The eight steps](#the-eight-steps)
 - [The validator](#the-validator)
@@ -130,13 +133,50 @@ Invoke it by name. It will not trigger on its own.
 "spec this before coding"     any harness, said explicitly
 ```
 
-Then follow the gates. There are three, and the first is a conversation rather than a document —
-the full walkthrough is in [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+Then follow the gates. On a project's first run it will also ask two setup questions — where the
+documents should live, and whether it may touch git — and record the answers.
+
+There are three gates, and the first is a conversation rather than a document. The full
+walkthrough is in [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+
+## Project configuration
+
+The first time you run the workflow in a project it asks two questions, writes the answers to
+`eagle-sdd.yml` at the project root, and never asks again.
+
+```yaml
+# eagle-sdd project configuration. Edit this file directly; nothing rewrites it.
+#
+# docs  where the design-and-plan pairs live, relative to this file.
+# git   true  - initialise a repository if the project has none, and commit
+#               after each finished task.
+#       false - leave version control entirely alone.
+
+docs: docs/eagle-sdd
+git: true
+```
+
+| Key | Default | Means |
+|---|---|---|
+| `docs` | `docs/eagle-sdd` | Where the pairs live, relative to the file |
+| `git` | `true` | Whether the workflow may `git init` and commit |
+
+**To change either setting, edit the file.** Nothing else writes to it, and no later run asks
+again. Moving the documents is a one-line change — plans written before the move keep pointing at
+the old path in their `**Spec:**` line, and the validator still recognises the pair, because the
+pair's identity is the date-and-slug in the filename and the link is only a convenience.
+
+**`git: false`** means the workflow runs no git command at all: no `git init`, and no commit step
+in any task. Useful when the project is not a repository, or when commits are not the agent's to
+make.
+
+The file sits at the project root rather than inside the documents directory, because it is what
+says where that directory is — a file cannot declare its own location.
 
 ## What it produces
 
 ```
-docs/eagle-sdd/
+<docs>/
 ├── designs/<YYYY-MM-DD>-<slug>-design.md   # the design, frozen at its date
 └── plans/<YYYY-MM-DD>-<slug>.md            # its implementation plan
 ```
@@ -217,15 +257,19 @@ a gate.
 ## The validator
 
 ```sh
-node skills/eagle-sdd/scripts/validate.mjs              # defaults to docs/eagle-sdd
-node skills/eagle-sdd/scripts/validate.mjs path/to/tree
+node skills/eagle-sdd/scripts/validate.mjs              # root from eagle-sdd.yml
+node skills/eagle-sdd/scripts/validate.mjs path/to/tree # or explicit
 ```
 
-Zero dependencies, Node 18+. Exits `1` on any error. **12 codes — 8 errors, 4 warnings.**
+Zero dependencies, Node 18+. It reads `eagle-sdd.yml` — searching upward from the working
+directory — for the documents path, so it needs no argument in a configured project. An explicit
+argument always wins. Exits `1` on any error; warnings never change the exit code.
+**13 codes — 9 errors, 4 warnings.**
 
 | Code | Kind | Caught |
 |---|---|---|
 | `F000` | error | No document tree at that path |
+| `F001` | error | `eagle-sdd.yml` has an empty `docs`, or a `git` that is not a boolean |
 | `F101` | error | A filename that is not `<date>-<slug>[-design].md` |
 | `F105` | error | A plan with no `# ` title |
 | `F106` | error | A plan with no `**Goal:**` |
@@ -240,7 +284,7 @@ Zero dependencies, Node 18+. Exits `1` on any error. **12 codes — 8 errors, 4 
 | `F130` | warning | A design with no plan of the same slug |
 
 **The validator is optional.** The workflow runs on the checklist alone. It is a real check,
-though — the test suite proves every one of the 12 codes actually fires, and that the reference
+though — the test suite proves every one of the 13 codes actually fires, and that the reference
 documents exactly those codes and no others.
 
 **The checks were calibrated against real documents, not the templates.** The first version
